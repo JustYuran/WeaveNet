@@ -15,7 +15,7 @@ export class Node {
       this.config = { 
         radius: 100, 
         capacity: 50, 
-        energyCost: 0,
+        cost: 0,
         throughput: 0,
         isStatic: false,
         isHub: false,
@@ -34,7 +34,7 @@ export class Node {
         this.config = config.nodeTypes.basic || config.nodeTypes.repeater || { 
           radius: 100, 
           capacity: 50, 
-          energyCost: 0,
+          cost: 0,
           throughput: 0,
           isStatic: false,
           isHub: false,
@@ -57,7 +57,7 @@ export class Node {
     this.baseRadius = this.config.radius;
     this.radius = this.baseRadius * radiusMod;
     this.capacity = this.config.capacity;
-    this.energyCost = this.config.energyCost || 0;
+    this.cost = this.config.cost || 0;
     this.throughput = this.config.throughput || 0;
     this.isStatic = this.config.isStatic || false;
     this.isHub = this.config.isHub || false;
@@ -71,7 +71,6 @@ export class Node {
     
     // Состояние
     this.load = 0;       // Текущая нагрузка %
-    this.energy = 100;   // Энергия %
     this.status = 'active'; // active, overloaded, offline, isolated
     this.connections = []; // ID соседних узлов
     
@@ -174,7 +173,6 @@ export class Node {
       type: this.type,
       terrainType: this.terrainType,
       load: this.load,
-      energy: this.energy,
       status: this.status,
       connections: [...this.connections]
     };
@@ -186,7 +184,6 @@ export class Node {
   static fromJSON(data, config) {
     const node = new Node(data.id, data.x, data.y, data.type, config, data.terrainType || 'plain');
     node.load = data.load;
-    node.energy = data.energy;
     node.status = data.status;
     node.connections = data.connections;
     return node;
