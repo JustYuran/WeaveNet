@@ -24,7 +24,23 @@ export class Node {
       };
       this.terrainConfig = { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
     } else {
-      this.config = config.nodeTypes[type] || config.nodeTypes.basic;
+      // Получаем конфигурацию узла по типу
+      const nodeTypeConfig = config.nodeTypes[type];
+      if (!nodeTypeConfig) {
+        console.warn('Unknown node type:', type, 'using basic');
+        this.config = config.nodeTypes.basic || { 
+          radius: 100, 
+          capacity: 50, 
+          income: { influence: 0.5, data: 0.2 }, 
+          cost: { influence: 10, data: 0 }, 
+          emoji: '📱',
+          color: '#00ff88',
+          shape: 'circle',
+          size: 10
+        };
+      } else {
+        this.config = nodeTypeConfig;
+      }
       this.terrainConfig = (config.terrain && config.terrain[terrainType]) || (config.terrain && config.terrain.plain) || { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
     }
     

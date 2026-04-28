@@ -163,6 +163,7 @@ export class CanvasRenderer {
     } else {
       // Клик по пустому месту - добавление узла (если выбран тип)
       if (this.game.pendingNodeType) {
+        // Передаем экранные координаты, GameEngine сам преобразует их в мировые
         this.game.addNode(this.mouseX, this.mouseY, this.game.pendingNodeType);
         this.game.pendingNodeType = null;
         

@@ -398,8 +398,9 @@ export class GameEngine {
       const size = node.size || 10;
       const baseRadius = node.selected ? size * 1.3 : size;
       
-      // Свечение только для активных игровых узлов
-      if (node.type === 'relay' || node.type === 'server' || node.type === 'stealth' || node.type === 'basic') {
+      // Свечение только для активных игровых узлов (не для пользователей и роутеров)
+      const isGameNode = node.type === 'relay' || node.type === 'server' || node.type === 'stealth' || node.type === 'basic';
+      if (isGameNode) {
         const gradient = this.ctx.createRadialGradient(
           node.x, node.y, 0,
           node.x, node.y, baseRadius * 2
@@ -463,8 +464,8 @@ export class GameEngine {
         }
       }
       
-      // Индикатор типа узла (эмодзи из конфига)
-      if (node.type !== 'user' && node.type !== 'router') {
+      // Индикатор типа узла (эмодзи из конфига) - только для игровых узлов
+      if (isGameNode && node.type !== 'user' && node.type !== 'router') {
         this.ctx.font = '12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -574,6 +575,13 @@ export class GameEngine {
       return null;
     }
     
+    // Проверка существования конфигурации узла
+    if (!this.config || !this.config.nodeTypes || !this.config.nodeTypes[type]) {
+      console.error('Неизвестный тип узла:', type);
+      console.log('Доступные типы:', this.config ? Object.keys(this.config.nodeTypes || {}) : 'config not loaded');
+      return null;
+    }
+    
     // Определение типа местности
     const terrainType = this.state.network.getTerrainType(worldX, worldY);
     
@@ -592,7 +600,7 @@ export class GameEngine {
     
     if (this.state.resources.influence < cost.influence || 
         this.state.resources.data < cost.data) {
-      console.log('Недостаточно ресурсов!');
+      console.log('Недостаточно ресурсов! Требуется:', cost, 'Доступно:', this.state.resources);
       return null;
     }
     
