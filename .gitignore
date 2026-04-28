@@ -10,8 +10,8 @@ target/
 
 # Dependencies
 node_modules/
-.venv/
 venv/
+.venv/
 .env
 .env.local
 .env.*
@@ -25,7 +25,7 @@ venv/
 .vscode/
 .idea/
 
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage

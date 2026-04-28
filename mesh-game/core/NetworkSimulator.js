@@ -51,14 +51,35 @@ export class NetworkSimulator {
     this.jammerZones = missionConfig.map?.jammerZones || [];
     this.homeNodes = missionConfig.map?.homeNodes || [];
     
-    // Создание начальных узлов
+    // Генерация случайной карты 1920x1080
+    this.mapWidth = 1920;
+    this.mapHeight = 1080;
+    
+    // Генерация 550 пользователей (синие точки 3px)
+    for (let i = 0; i < 550; i++) {
+      const x = Math.random() * this.mapWidth;
+      const y = Math.random() * this.mapHeight;
+      this.addNode(x, y, 'user');
+    }
+    
+    // Генерация 60 роутеров (оранжевые точки 6px)
+    for (let i = 0; i < 60; i++) {
+      const x = Math.random() * this.mapWidth;
+      const y = Math.random() * this.mapHeight;
+      this.addNode(x, y, 'router');
+    }
+    
+    // Автоматическое соединение пользователей и роутеров на расстоянии ≤ 5 пикселей
+    this.autoConnectNearbyNodes(5);
+
+    // Создание начальных узлов (игровые узлы игрока)
     if (missionConfig.initialNodes) {
       for (const nodeData of missionConfig.initialNodes) {
         this.addNode(nodeData.x, nodeData.y, nodeData.type);
       }
     }
     
-    // Создание домашних узлов (пользовательские ретрансляторы)
+    // Создание домашних узлов
     if (this.homeNodes) {
       for (const nodeData of this.homeNodes) {
         this.addNode(nodeData.x, nodeData.y, nodeData.type);
@@ -67,6 +88,24 @@ export class NetworkSimulator {
 
     // Первичный расчет соединений
     this.updateConnections();
+  }
+
+  /**
+   * Автоматическое соединение близких узлов
+   */
+  autoConnectNearbyNodes(maxDistance) {
+    const users = this.nodes.filter(n => n.type === 'user');
+    const routers = this.nodes.filter(n => n.type === 'router');
+    
+    for (const user of users) {
+      for (const router of routers) {
+        const distance = Math.hypot(user.x - router.x, user.y - router.y);
+        if (distance <= maxDistance) {
+          // Соединение будет создано в updateConnections()
+          // Здесь просто помечаем что они близки
+        }
+      }
+    }
   }
 
   /**
@@ -170,11 +209,23 @@ export class NetworkSimulator {
         // Расстояние между узлами
         const distance = Math.hypot(node.x - neighbor.x, node.y - neighbor.y);
         
-        // Условие соединения: расстояние <= минимального из радиусов * коэффициент
-        // Используем более мягкое условие для лучшей играбельности
-        const maxConnectDist = Math.min(effectiveRadius, neighborEffectiveRadius) * 1.2;
+        // Для пользователей и роутеров: соединение если расстояние ≤ 5 пикселей
+        // Для игровых узлов: соединение по радиусу покрытия
+        let shouldConnect = false;
         
-        if (distance <= maxConnectDist) {
+        const isUserOrRouter = (node.type === 'user' || node.type === 'router') && 
+                               (neighbor.type === 'user' || neighbor.type === 'router');
+        
+        if (isUserOrRouter) {
+          // Автоматическое соединение на расстоянии ≤ 5 пикселей
+          shouldConnect = distance <= 5;
+        } else {
+          // Игровые узлы соединяются по радиусу покрытия (минимальный из двух радиусов)
+          const maxConnectDist = Math.min(effectiveRadius, neighborEffectiveRadius);
+          shouldConnect = distance <= maxConnectDist;
+        }
+        
+        if (shouldConnect) {
           const pairKey = [node.id, neighbor.id].sort().join('-');
           
           if (!connectedPairs.has(pairKey)) {
@@ -339,8 +390,8 @@ export class NetworkSimulator {
     
     // Генерация тестовых точек
     const gridSize = 50;
-    const mapWidth = 1000;
-    const mapHeight = 800;
+    const mapWidth = this.mapWidth || 1920;
+    const mapHeight = this.mapHeight || 1080;
     
     let coveredPoints = 0;
     let totalPoints = 0;

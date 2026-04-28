@@ -306,13 +306,21 @@ export class GameEngine {
    */
   renderEdges() {
     for (const edge of this.state.network.edges) {
-      const color = edge.getColor();
-      const alpha = edge.getAlpha();
-      const width = edge.getWidth();
+      // Определяем цвет соединения в зависимости от типов узлов
+      const isUserOrRouterEdge = (edge.nodeA.type === 'user' || edge.nodeA.type === 'router') && 
+                                  (edge.nodeB.type === 'user' || edge.nodeB.type === 'router');
       
-      this.ctx.strokeStyle = color;
-      this.ctx.globalAlpha = alpha;
-      this.ctx.lineWidth = width;
+      if (isUserOrRouterEdge) {
+        // Соединения между пользователями/роутерами - тонкие серые линии
+        this.ctx.strokeStyle = '#444466';
+        this.ctx.globalAlpha = 0.5;
+        this.ctx.lineWidth = 1;
+      } else {
+        // Соединения игровых узлов - зеленые линии (#00ff64, толщина 2px)
+        this.ctx.strokeStyle = '#00ff64';
+        this.ctx.globalAlpha = 1.0;
+        this.ctx.lineWidth = 2;
+      }
       
       this.ctx.beginPath();
       this.ctx.moveTo(edge.nodeA.x, edge.nodeA.y);
@@ -327,8 +335,8 @@ export class GameEngine {
    * Отрисовка карты мира (фон)
    */
   renderWorldMap() {
-    const mapWidth = 1000;
-    const mapHeight = 800;
+    const mapWidth = this.state.network.mapWidth || 1920;
+    const mapHeight = this.state.network.mapHeight || 1080;
     
     // Процедурная отрисовка местности
     const gridSize = 20;
@@ -384,45 +392,86 @@ export class GameEngine {
    */
   renderNodes() {
     for (const node of this.state.network.nodes) {
-      const color = node.getStatusColor();
-      const baseRadius = 10;
-      const radius = node.selected ? baseRadius * 1.3 : baseRadius;
+      // Используем цвет из конфига узла
+      const color = node.color || node.getStatusColor();
+      const shape = node.shape || 'circle';
+      const size = node.size || 10;
+      const baseRadius = node.selected ? size * 1.3 : size;
       
-      // Свечение
-      const gradient = this.ctx.createRadialGradient(
-        node.x, node.y, 0,
-        node.x, node.y, radius * 2
-      );
-      gradient.addColorStop(0, color + '40');
-      gradient.addColorStop(1, 'transparent');
+      // Свечение только для активных игровых узлов
+      if (node.type === 'relay' || node.type === 'server' || node.type === 'stealth' || node.type === 'basic') {
+        const gradient = this.ctx.createRadialGradient(
+          node.x, node.y, 0,
+          node.x, node.y, baseRadius * 2
+        );
+        gradient.addColorStop(0, color + '40');
+        gradient.addColorStop(1, 'transparent');
+        
+        this.ctx.fillStyle = gradient;
+        this.ctx.beginPath();
+        this.ctx.arc(node.x, node.y, baseRadius * 2, 0, Math.PI * 2);
+        this.ctx.fill();
+      }
       
-      this.ctx.fillStyle = gradient;
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, radius * 2, 0, Math.PI * 2);
-      this.ctx.fill();
-      
-      // Основной круг
+      // Отрисовка узла в зависимости от формы
       this.ctx.fillStyle = color;
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-      this.ctx.fill();
+      
+      if (shape === 'circle') {
+        this.ctx.beginPath();
+        this.ctx.arc(node.x, node.y, baseRadius, 0, Math.PI * 2);
+        this.ctx.fill();
+      } else if (shape === 'square') {
+        this.ctx.fillRect(
+          node.x - baseRadius, 
+          node.y - baseRadius, 
+          baseRadius * 2, 
+          baseRadius * 2
+        );
+      } else if (shape === 'triangle') {
+        const h = baseRadius * Math.sqrt(3) / 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(node.x, node.y - h);
+        this.ctx.lineTo(node.x + baseRadius, node.y + h);
+        this.ctx.lineTo(node.x - baseRadius, node.y + h);
+        this.ctx.closePath();
+        this.ctx.fill();
+      }
       
       // Обводка при выделении или наведении
       if (node.selected || node.hovered) {
         this.ctx.strokeStyle = '#ffffff';
         this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(node.x, node.y, radius + 3, 0, Math.PI * 2);
-        this.ctx.stroke();
+        if (shape === 'circle') {
+          this.ctx.beginPath();
+          this.ctx.arc(node.x, node.y, baseRadius + 3, 0, Math.PI * 2);
+          this.ctx.stroke();
+        } else if (shape === 'square') {
+          this.ctx.strokeRect(
+            node.x - baseRadius - 3, 
+            node.y - baseRadius - 3, 
+            (baseRadius + 3) * 2, 
+            (baseRadius + 3) * 2
+          );
+        } else if (shape === 'triangle') {
+          const h = (baseRadius + 3) * Math.sqrt(3) / 2;
+          this.ctx.beginPath();
+          this.ctx.moveTo(node.x, node.y - h);
+          this.ctx.lineTo(node.x + baseRadius + 3, node.y + h);
+          this.ctx.lineTo(node.x - baseRadius - 3, node.y + h);
+          this.ctx.closePath();
+          this.ctx.stroke();
+        }
       }
       
       // Индикатор типа узла (эмодзи из конфига)
-      this.ctx.font = '12px Arial';
-      this.ctx.textAlign = 'center';
-      this.ctx.textBaseline = 'middle';
-      
-      const emoji = node.getEmoji();
-      this.ctx.fillText(emoji, node.x, node.y);
+      if (node.type !== 'user' && node.type !== 'router') {
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        const emoji = node.getEmoji();
+        this.ctx.fillText(emoji, node.x, node.y);
+      }
     }
   }
 

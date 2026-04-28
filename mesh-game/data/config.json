@@ -7,52 +7,77 @@
       "capacity": 50,
       "energyConsumption": 1,
       "income": { "influence": 0.5, "data": 0.2 },
+      "emoji": "📱",
+      "color": "#00ff88",
+      "shape": "circle",
+      "size": 10,
       "description": "Обычный смартфон. Дешевый, малый радиус. +0.5 инф/сек, +0.2 дан/сек."
     },
     "relay": {
       "name": "Ретранслятор",
       "cost": { "influence": 30, "data": 20 },
-      "radius": 200,
+      "radius": 150,
       "capacity": 200,
-      "energyConsumption": 5,
+      "energyConsumption": 10,
       "income": { "influence": 2.0, "data": 1.5 },
+      "emoji": "📶",
+      "color": "#00ff64",
+      "shape": "circle",
+      "size": 10,
       "description": "Мощный роутер. Большой радиус и пропускная способность. +2.0 инф/сек, +1.5 дан/сек."
     },
-    "cache": {
-      "name": "Кэш-узел",
-      "cost": { "influence": 25, "data": 40 },
-      "radius": 120,
-      "capacity": 100,
-      "energyConsumption": 3,
-      "income": { "influence": 1.0, "data": 3.0 },
-      "description": "Сервер хранения. Снижает задержку, много данных. +1.0 инф/сек, +3.0 дан/сек."
+    "server": {
+      "name": "Сервер",
+      "cost": { "influence": 50, "data": 40 },
+      "radius": 200,
+      "capacity": 300,
+      "energyConsumption": 25,
+      "income": { "influence": 3.0, "data": 2.5 },
+      "emoji": "🖥️",
+      "color": "#ff0064",
+      "shape": "square",
+      "size": 24,
+      "description": "Сервер хранения. Снижает задержку, много данных. +3.0 инф/сек, +2.5 дан/сек."
     },
     "stealth": {
-      "name": "Скрытый узел",
-      "cost": { "influence": 40, "data": 10 },
-      "radius": 80,
-      "capacity": 30,
-      "energyConsumption": 2,
-      "income": { "influence": 1.5, "data": 0.5 },
-      "description": "Замаскированный узел. Устойчив к обнаружению. +1.5 инф/сек, +0.5 дан/сек."
+      "name": "Скрытый ретранслятор",
+      "cost": { "influence": 40, "data": 30 },
+      "radius": 100,
+      "capacity": 80,
+      "energyConsumption": 15,
+      "income": { "influence": 1.5, "data": 1.0 },
+      "emoji": "👻",
+      "color": "#9600ff",
+      "shape": "triangle",
+      "size": 18,
+      "stealth": true,
+      "description": "Замаскированный узел. Устойчив к обнаружению. +1.5 инф/сек, +1.0 дан/сек."
     },
-    "user_home": {
-      "name": "Домашний узел",
+    "user": {
+      "name": "Пользователь",
       "cost": { "influence": 5, "data": 0 },
-      "radius": 60,
+      "radius": 50,
       "capacity": 20,
       "energyConsumption": 0.5,
       "income": { "influence": 0.3, "data": 0.1 },
-      "description": "Устройство пользователя дома. Очень дешевый, малый радиус. +0.3 инф/сек, +0.1 дан/сек."
+      "emoji": "👤",
+      "color": "#64c8ff",
+      "shape": "circle",
+      "size": 3,
+      "description": "Устройство пользователя. Очень дешевый, малый радиус."
     },
-    "user_enthusiast": {
-      "name": "Энтузиаст",
-      "cost": { "influence": 15, "data": 5 },
-      "radius": 110,
-      "capacity": 60,
-      "energyConsumption": 1.5,
-      "income": { "influence": 0.8, "data": 0.6 },
-      "description": "Продвинутый пользователь. Хороший баланс. +0.8 инф/сек, +0.6 дан/сек."
+    "router": {
+      "name": "Роутер",
+      "cost": { "influence": 20, "data": 10 },
+      "radius": 80,
+      "capacity": 100,
+      "energyConsumption": 3,
+      "income": { "influence": 1.0, "data": 0.5 },
+      "emoji": "📡",
+      "color": "#ffaa00",
+      "shape": "circle",
+      "size": 6,
+      "description": "Базовая точка доступа. Средний радиус."
     }
   },
   "simulation": {
