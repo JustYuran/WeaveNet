@@ -263,8 +263,10 @@ export class NetworkSimulator {
     let totalData = 0;
     
     for (const node of this.nodes) {
-      // Узел дает доход только если подключен к сети (имеет соединения)
-      if (node.status === 'active' || (node.status === 'isolated' && this.nodes.length === 1)) {
+      // Одинокий узел тоже приносит доход
+      const isAlone = this.nodes.length === 1;
+      // Узел дает доход если подключен к сети (имеет соединения) или он один
+      if (isAlone || node.connections.length > 0) {
         totalInfluence += node.income.influence;
         totalData += node.income.data;
       }
