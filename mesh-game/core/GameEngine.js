@@ -287,15 +287,15 @@ export class GameEngine {
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
     this.ctx.lineWidth = 1;
     
-    const gridSize = 100;
-    for (let x = 0; x <= mapWidth; x += gridSize) {
+    const gridStep = 100;
+    for (let x = 0; x <= mapWidth; x += gridStep) {
       this.ctx.beginPath();
       this.ctx.moveTo(x, 0);
       this.ctx.lineTo(x, mapHeight);
       this.ctx.stroke();
     }
     
-    for (let y = 0; y <= mapHeight; y += gridSize) {
+    for (let y = 0; y <= mapHeight; y += gridStep) {
       this.ctx.beginPath();
       this.ctx.moveTo(0, y);
       this.ctx.lineTo(mapWidth, y);
