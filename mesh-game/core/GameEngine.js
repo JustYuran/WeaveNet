@@ -1,104 +1,70 @@
 /**
- * Игровой движок WeaveNet
- * Управляет игровым циклом, состоянием и координацией всех систем
+ * Игровой движок
  */
 import { NetworkSimulator } from './NetworkSimulator.js';
 import { EventSystem } from './EventSystem.js';
-import { CanvasRenderer } from '../renderer/CanvasRenderer.js';
 
 export class GameEngine {
   constructor(canvas) {
     this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
     
-    // Состояние игры
     this.state = {
       currentMission: null,
       network: null,
       resources: { influence: 0, data: 0 },
-      gameTime: 0,           // Время игры в мс
+      gameTime: 0,
       isPaused: false,
-      timeScale: 1,          // Множитель скорости (1, 2, 5)
-      missionComplete: false
+      timeScale: 1,
+      selectedNode: null,
+      hoverNode: null,
+      camera: { x: 0, y: 0, zoom: 1 }
     };
     
-    // Системы
-    this.renderer = null;
-    this.eventSystem = null;
-    this.ui = null;
-    
-    // Конфигурация
     this.config = null;
-    
-    // Временные переменные
+    this.eventSystem = null;
     this.lastUpdate = 0;
-    this.accumulatedTime = 0;
-    this.simulationTickRate = 1000;  // 1 секунда между тиками симуляции
-    this.simulationAccumulator = 0;
+    this.accumulator = 0;
     
-    // Генерация пакетов
-    this.packetSpawnTimer = 0;
-    this.packetSpawnInterval = 500;  // Пакет каждые 500мс
-    
-    // Выбранный тип узла для размещения
-    this.selectedNodeType = 'basic';
+    // Callbacks для UI
+    this.onResourceUpdate = null;
+    this.onMetricsUpdate = null;
+    this.onMissionComplete = null;
+    this.onMissionFail = null;
   }
 
   /**
    * Инициализация игры с конфигурацией миссии
-   * @param {object} missionConfig - Конфигурация миссии
-   * @param {object} gameConfig - Общая конфигурация игры
    */
-  async init(missionConfig, gameConfig) {
+  async init(missionConfig, config) {
+    this.config = config;
     this.state.currentMission = missionConfig;
-    this.config = gameConfig;
+    
+    // Создание симулятора сети
+    this.state.network = new NetworkSimulator(config);
+    this.state.network.init(missionConfig);
     
     // Инициализация ресурсов
-    this.state.resources = {...missionConfig.resources};
-    this.state.gameTime = 0;
-    this.state.isPaused = false;
-    this.state.timeScale = 1;
-    this.state.missionComplete = false;
+    this.state.resources = { 
+      ...missionConfig.resources 
+    };
     
-    // Создание сети
-    this.state.network = new NetworkSimulator(this.config);
-    
-    // Настройка карты
-    if (missionConfig.map) {
-      this.state.network.obstacles = missionConfig.map.obstacles || [];
-      this.state.network.jammerZones = [];
-    }
-    
-    // Добавление начальных узлов
-    if (missionConfig.initialNodes) {
-      for (const nodeData of missionConfig.initialNodes) {
-        const typeConfig = this.config.nodeTypes[nodeData.type];
-        this.state.network.addNode(
-          nodeData.x, 
-          nodeData.y, 
-          nodeData.type, 
-          typeConfig
-        );
-      }
-    }
-    
-    // Инициализация рендерера
-    this.renderer = new CanvasRenderer(this.canvas, this.state.network);
-    
-    // Инициализация системы событий
+    // Система событий
     this.eventSystem = new EventSystem(this);
     
     // Планирование событий из миссии
     if (missionConfig.events) {
-      for (const event of missionConfig.events) {
-        this.eventSystem.scheduleEvent(event);
+      for (const eventConfig of missionConfig.events) {
+        this.eventSystem.scheduleEvent(eventConfig);
       }
     }
     
-    // Обновление UI
-    if (this.ui) {
-      this.ui.updateResources();
-      this.ui.updateObjectives();
-    }
+    this.state.gameTime = 0;
+    this.state.isPaused = false;
+    this.state.timeScale = 1;
+    
+    // Начальный расчет дохода
+    this.state.network.calculateIncome();
     
     console.log('Игра инициализирована:', missionConfig.name);
   }
@@ -106,281 +72,434 @@ export class GameEngine {
   /**
    * Основной игровой цикл
    */
-  loop() {
-    const currentTime = performance.now();
-    let deltaTime = currentTime - this.lastUpdate;
+  loop(timestamp) {
+    if (!this.lastUpdate) {
+      this.lastUpdate = timestamp;
+    }
     
-    // Ограничение deltaTime для предотвращения скачков
-    if (deltaTime > 100) deltaTime = 100;
-    
-    this.lastUpdate = currentTime;
+    const deltaTime = (timestamp - this.lastUpdate) / 1000;
+    this.lastUpdate = timestamp;
     
     if (!this.state.isPaused) {
-      // Применяем множитель времени
-      const scaledDeltaTime = deltaTime * this.state.timeScale;
-      
-      // Обновление состояния
-      this.update(scaledDeltaTime, currentTime);
-      
-      // Обновление времени игры
-      this.state.gameTime += scaledDeltaTime;
-      
-      // Симуляция сети (с фиксированным шагом)
-      this.simulationAccumulator += scaledDeltaTime;
-      while (this.simulationAccumulator >= this.simulationTickRate) {
-        this.state.network.simulateTick(this.simulationTickRate);
-        this.simulationAccumulator -= this.simulationTickRate;
-        
-        // Генерация случайных пакетов
-        this.spawnPackets(this.simulationTickRate);
-      }
-      
-      // Обновление событий
-      this.eventSystem.update(scaledDeltaTime, this.state.gameTime);
+      const scaledDelta = deltaTime * this.state.timeScale;
+      this.update(scaledDelta);
     }
     
-    // Отрисовка (всегда, даже на паузе)
     this.render();
     
-    // Обновление UI
-    if (this.ui) {
-      this.ui.updateStats();
-      this.ui.updateTimer(this.state.gameTime);
-    }
-    
-    // Проверка условий победы
-    this.checkVictoryConditions();
-    
-    // Следующий кадр
-    requestAnimationFrame(() => this.loop());
+    requestAnimationFrame((t) => this.loop(t));
   }
 
   /**
-   * Обновление игровой логики
-   * @param {number} deltaTime
-   * @param {number} currentTime
+   * Обновление состояния игры
    */
-  update(deltaTime, currentTime) {
-    // Пассивный доход ресурсов
-    this.updateResources(deltaTime);
-  }
-
-  /**
-   * Обновление ресурсов (пассивный доход)
-   * @param {number} deltaTime
-   */
-  updateResources(deltaTime) {
-    const seconds = deltaTime / 1000;
-    const metrics = this.state.network.getMetrics();
+  update(deltaTime) {
+    // Обновление времени
+    this.state.gameTime += deltaTime;
     
-    // Базовый доход
-    this.state.resources.influence += this.config.economy.baseIncome.influence * seconds;
-    this.state.resources.data += this.config.economy.baseIncome.data * seconds;
-    
-    // Доход от каждого узла согласно его типу
-    for (const node of this.state.network.nodes) {
-      const nodeConfig = this.config.nodeTypes[node.type];
-      if (nodeConfig && nodeConfig.income) {
-        this.state.resources.influence += nodeConfig.income.influence * seconds;
-        this.state.resources.data += nodeConfig.income.data * seconds;
+    // Обновление сети
+    if (this.state.network) {
+      this.state.network.update(deltaTime);
+      
+      // Обновление ресурсов от дохода
+      const income = this.state.network.getIncome();
+      this.state.resources.influence += income.influence * deltaTime;
+      this.state.resources.data += income.data * deltaTime;
+      
+      // Уведомление UI об обновлении ресурсов (каждые 0.1 сек)
+      if (this.onResourceUpdate) {
+        this.onResourceUpdate({
+          resources: { ...this.state.resources },
+          income: income
+        });
+      }
+      
+      // Уведомление UI об обновлении метрик
+      if (this.onMetricsUpdate) {
+        this.onMetricsUpdate(this.state.network.getMetrics());
       }
     }
     
-    // Доход от покрытия
-    this.state.resources.influence += metrics.coverage * this.config.economy.incomePerCoverage.influence * seconds;
-    this.state.resources.data += metrics.coverage * this.config.economy.incomePerCoverage.data * seconds;
-  }
-
-  /**
-   * Генерация пакетов данных
-   * @param {number} deltaTime
-   */
-  spawnPackets(deltaTime) {
-    this.packetSpawnTimer += deltaTime;
-    
-    if (this.packetSpawnTimer >= this.packetSpawnInterval) {
-      this.packetSpawnTimer = 0;
-      
-      const nodes = this.state.network.nodes.filter(n => n.status === 'active');
-      
-      if (nodes.length >= 2) {
-        // Выбираем случайные узлы отправителя и получателя
-        const fromNode = nodes[Math.floor(Math.random() * nodes.length)];
-        let toNode = nodes[Math.floor(Math.random() * nodes.length)];
-        
-        // Убедимся что это разные узлы
-        let attempts = 0;
-        while (toNode === fromNode && attempts < 10) {
-          toNode = nodes[Math.floor(Math.random() * nodes.length)];
-          attempts++;
-        }
-        
-        if (toNode !== fromNode) {
-          this.state.network.routePacket(fromNode.id, toNode.id);
-        }
-      }
+    // Обновление системы событий
+    if (this.eventSystem) {
+      this.eventSystem.update(deltaTime);
     }
+    
+    // Проверка условий победы/поражения
+    this.checkMissionStatus();
   }
 
   /**
-   * Отрисовка
+   * Отрисовка игры
    */
   render() {
-    if (this.renderer) {
-      this.renderer.render();
+    // Очистка canvas
+    this.ctx.fillStyle = '#1a1a2e';
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+    if (!this.state.network) return;
+    
+    // Сохранение контекста для трансформаций камеры
+    this.ctx.save();
+    
+    // Применение камеры
+    this.ctx.translate(
+      this.state.camera.x,
+      this.state.camera.y
+    );
+    this.ctx.scale(
+      this.state.camera.zoom,
+      this.state.camera.zoom
+    );
+    
+    // Отрисовка сетки карты
+    this.renderGrid();
+    
+    // Отрисовка зон помех
+    this.renderJammerZones();
+    
+    // Отрисовка препятствий
+    this.renderObstacles();
+    
+    // Отрисовка соединений
+    this.renderEdges();
+    
+    // Отрисовка узлов
+    this.renderNodes();
+    
+    // Отрисовка пакетов
+    this.renderPackets();
+    
+    // Отрисовка радиуса при наведении
+    if (this.state.hoverNode) {
+      this.renderNodeRadius(this.state.hoverNode);
+    }
+    
+    // Восстановление контекста
+    this.ctx.restore();
+  }
+
+  /**
+   * Отрисовка сетки
+   */
+  renderGrid() {
+    const gridSize = 50;
+    const mapWidth = 1000;
+    const mapHeight = 800;
+    
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    this.ctx.lineWidth = 1;
+    
+    for (let x = 0; x <= mapWidth; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, mapHeight);
+      this.ctx.stroke();
+    }
+    
+    for (let y = 0; y <= mapHeight; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(mapWidth, y);
+      this.ctx.stroke();
+    }
+    
+    // Границы карты
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(0, 0, mapWidth, mapHeight);
+  }
+
+  /**
+   * Отрисовка зон помех
+   */
+  renderJammerZones() {
+    for (const zone of this.state.network.jammerZones) {
+      const gradient = this.ctx.createRadialGradient(
+        zone.x, zone.y, 0,
+        zone.x, zone.y, zone.radius
+      );
+      gradient.addColorStop(0, 'rgba(255, 0, 100, 0.3)');
+      gradient.addColorStop(1, 'rgba(255, 0, 100, 0)');
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      this.ctx.strokeStyle = 'rgba(255, 0, 100, 0.5)';
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.beginPath();
+      this.ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
     }
   }
 
   /**
-   * Проверка условий победы
+   * Отрисовка препятствий
    */
-  checkVictoryConditions() {
-    if (this.state.missionComplete || !this.state.currentMission) return;
+  renderObstacles() {
+    for (const obstacle of this.state.network.obstacles) {
+      this.ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+      this.ctx.beginPath();
+      this.ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      this.ctx.strokeStyle = 'rgba(150, 150, 150, 0.8)';
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+    }
+  }
+
+  /**
+   * Отрисовка соединений
+   */
+  renderEdges() {
+    for (const edge of this.state.network.edges) {
+      const color = edge.getColor();
+      const alpha = edge.getAlpha();
+      const width = edge.getWidth();
+      
+      this.ctx.strokeStyle = color;
+      this.ctx.globalAlpha = alpha;
+      this.ctx.lineWidth = width;
+      
+      this.ctx.beginPath();
+      this.ctx.moveTo(edge.nodeA.x, edge.nodeA.y);
+      this.ctx.lineTo(edge.nodeB.x, edge.nodeB.y);
+      this.ctx.stroke();
+    }
+    
+    this.ctx.globalAlpha = 1;
+  }
+
+  /**
+   * Отрисовка узлов
+   */
+  renderNodes() {
+    for (const node of this.state.network.nodes) {
+      const color = node.getStatusColor();
+      const baseRadius = 8;
+      const radius = node.selected ? baseRadius * 1.3 : baseRadius;
+      
+      // Свечение
+      const gradient = this.ctx.createRadialGradient(
+        node.x, node.y, 0,
+        node.x, node.y, radius * 2
+      );
+      gradient.addColorStop(0, color + '40');
+      gradient.addColorStop(1, 'transparent');
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(node.x, node.y, radius * 2, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Основной круг
+      this.ctx.fillStyle = color;
+      this.ctx.beginPath();
+      this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Обводка при выделении
+      if (node.selected || node.hovered) {
+        this.ctx.strokeStyle = '#ffffff';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(node.x, node.y, radius + 3, 0, Math.PI * 2);
+        this.ctx.stroke();
+      }
+      
+      // Индикатор типа узла
+      this.ctx.fillStyle = '#1a1a2e';
+      this.ctx.font = '10px Arial';
+      this.ctx.textAlign = 'center';
+      this.ctx.textBaseline = 'middle';
+      
+      let icon = '';
+      switch (node.type) {
+        case 'relay': icon = 'R'; break;
+        case 'cache': icon = 'C'; break;
+        case 'stealth': icon = 'S'; break;
+        case 'user_home': icon = 'H'; break;
+        case 'user_enthusiast': icon = 'E'; break;
+        default: icon = 'B';
+      }
+      
+      this.ctx.fillText(icon, node.x, node.y);
+    }
+  }
+
+  /**
+   * Отрисовка радиуса узла
+   */
+  renderNodeRadius(node) {
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    this.ctx.setLineDash([5, 5]);
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+    this.ctx.stroke();
+    this.ctx.setLineDash([]);
+  }
+
+  /**
+   * Отрисовка пакетов
+   */
+  renderPackets() {
+    for (const packet of this.state.network.packets) {
+      const pos = packet.getPosition(this.state.network);
+      
+      this.ctx.fillStyle = '#00ffff';
+      this.ctx.shadowColor = '#00ffff';
+      this.ctx.shadowBlur = 10;
+      
+      this.ctx.beginPath();
+      this.ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      this.ctx.shadowBlur = 0;
+    }
+  }
+
+  /**
+   * Проверка статуса миссии
+   */
+  checkMissionStatus() {
+    if (!this.state.currentMission) return;
     
     const objectives = this.state.currentMission.objectives;
     const metrics = this.state.network.getMetrics();
+    const nodeCount = this.state.network.nodes.length;
     
-    let allComplete = true;
+    let completed = true;
+    let failed = false;
     
-    // Проверка покрытия
+    // Проверка целей
     if (objectives.coverage && metrics.coverage < objectives.coverage) {
-      allComplete = false;
+      completed = false;
     }
     
-    // Проверка задержки (должна быть меньше максимума)
     if (objectives.maxLatency && metrics.avgLatency > objectives.maxLatency) {
-      allComplete = false;
+      completed = false;
     }
     
-    // Проверка стабильности
     if (objectives.minStability && metrics.stability < objectives.minStability) {
-      allComplete = false;
+      completed = false;
     }
     
-    // Проверка времени (если есть лимит)
-    if (objectives.timeLimit) {
-      const timeSeconds = this.state.gameTime / 1000;
-      if (timeSeconds >= objectives.timeLimit) {
-        // Время вышло
-        if (allComplete) {
-          this.completeMission(true);
-        } else {
-          this.completeMission(false);
-        }
-        return;
+    if (objectives.nodeCount && nodeCount < objectives.nodeCount) {
+      completed = false;
+    }
+    
+    // Проверка времени
+    if (objectives.timeLimit && this.state.gameTime > objectives.timeLimit) {
+      if (!completed) {
+        failed = true;
       }
     }
     
-    if (allComplete) {
-      this.completeMission(true);
+    // Уведомление о завершении
+    if (completed && this.onMissionComplete) {
+      this.onMissionComplete(metrics);
+    } else if (failed && this.onMissionFail) {
+      this.onMissionFail(metrics);
     }
-  }
-
-  /**
-   * Завершение миссии
-   * @param {boolean} success
-   */
-  completeMission(success) {
-    this.state.missionComplete = true;
-    this.state.isPaused = true;
-    
-    if (this.ui) {
-      this.ui.showMissionComplete(success);
-    }
-  }
-
-  /**
-   * Пауза/продолжение
-   */
-  togglePause() {
-    this.state.isPaused = !this.state.isPaused;
-    this.lastUpdate = performance.now();
-  }
-
-  /**
-   * Установка скорости времени
-   * @param {number} speed - 1, 2, или 5
-   */
-  setTimeSpeed(speed) {
-    this.state.timeScale = speed;
   }
 
   /**
    * Добавление узла
-   * @param {number} x
-   * @param {number} y
-   * @param {string} type
    */
   addNode(x, y, type) {
-    const typeConfig = this.config.nodeTypes[type];
-    const cost = typeConfig.cost;
+    // Корректировка координат с учетом камеры
+    const worldX = (x - this.state.camera.x) / this.state.camera.zoom;
+    const worldY = (y - this.state.camera.y) / this.state.camera.zoom;
     
-    // Проверка ресурсов
-    if (this.state.resources.influence < cost.influence ||
-        this.state.resources.data < cost.data) {
-      return false;
-    }
+    const node = this.state.network.addNode(worldX, worldY, type);
     
-    // Списываем ресурсы
+    // Списание стоимости
+    const cost = this.config.nodeTypes[type].cost;
     this.state.resources.influence -= cost.influence;
     this.state.resources.data -= cost.data;
     
-    // Добавляем узел
-    this.state.network.addNode(x, y, type, typeConfig);
-    
-    // Обновляем UI
-    if (this.ui) {
-      this.ui.updateResources();
-    }
-    
-    return true;
+    return node;
   }
 
   /**
    * Удаление узла
-   * @param {number} nodeId
    */
   removeNode(nodeId) {
-    this.state.network.removeNode(nodeId);
+    const node = this.state.network.getNodeById(nodeId);
+    if (!node) return false;
+    
+    // Возврат части ресурсов
+    const cost = this.config.nodeTypes[node.type].cost;
+    this.state.resources.influence += cost.influence * 0.5;
+    this.state.resources.data += cost.data * 0.5;
+    
+    return this.state.network.removeNode(nodeId);
+  }
+
+  /**
+   * Установка паузы
+   */
+  setPaused(paused) {
+    this.state.isPaused = paused;
+  }
+
+  /**
+   * Установка скорости времени
+   */
+  setTimeScale(scale) {
+    this.state.timeScale = scale;
   }
 
   /**
    * Сохранение игры
-   * @returns {string} JSON строка
    */
   save() {
     const saveData = {
       mission: this.state.currentMission?.id,
-      resources: {...this.state.resources},
+      resources: { ...this.state.resources },
       gameTime: this.state.gameTime,
-      network: this.state.network.serialize(),
-      config: this.config
+      network: this.state.network.toJSON(),
+      events: this.eventSystem?.toJSON()
     };
     
     localStorage.setItem('weavenet_save', JSON.stringify(saveData));
-    return JSON.stringify(saveData);
+    console.log('Игра сохранена');
+    return saveData;
   }
 
   /**
    * Загрузка игры
-   * @param {string} jsonString
    */
-  load(jsonString) {
+  async load() {
+    const saveData = localStorage.getItem('weavenet_save');
+    if (!saveData) return false;
+    
     try {
-      const saveData = JSON.parse(jsonString);
+      const data = JSON.parse(saveData);
       
-      this.state.resources = saveData.resources;
-      this.state.gameTime = saveData.gameTime;
-      this.state.network = NetworkSimulator.deserialize(
-        saveData.network, 
-        saveData.config
-      );
+      // Загрузка конфигурации миссии
+      const response = await fetch('data/scenarios.json');
+      const scenarios = await response.json();
+      const missionConfig = scenarios[data.mission];
       
-      // Пересоздаем рендерер с новой сетью
-      this.renderer = new CanvasRenderer(this.canvas, this.state.network);
+      if (!missionConfig) return false;
       
-      if (this.ui) {
-        this.ui.updateResources();
+      await this.init(missionConfig, this.config);
+      
+      // Восстановление состояния
+      this.state.resources = data.resources;
+      this.state.gameTime = data.gameTime;
+      this.state.network = NetworkSimulator.fromJSON(data.network, this.config);
+      
+      if (data.events && this.eventSystem) {
+        this.eventSystem = EventSystem.fromJSON(data.events, this);
       }
       
       console.log('Игра загружена');
@@ -396,17 +515,6 @@ export class GameEngine {
    */
   reset() {
     localStorage.removeItem('weavenet_save');
-    
-    if (this.state.currentMission && this.config) {
-      this.init(this.state.currentMission, this.config);
-    }
-  }
-
-  /**
-   * Установка UI контроллера
-   * @param {object} ui
-   */
-  setUI(ui) {
-    this.ui = ui;
+    location.reload();
   }
 }

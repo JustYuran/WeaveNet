@@ -1,383 +1,425 @@
 /**
- * WeaveNet - Mesh Network Strategy Game
- * Точка входа приложения
+ * Точка входа и UI контроллер
  */
 import { GameEngine } from './core/GameEngine.js';
+import { CanvasRenderer } from './renderer/CanvasRenderer.js';
+
+// Глобальное состояние
+let game = null;
+let renderer = null;
+let config = null;
+let currentMission = null;
+let selectedNodeType = null;
+
+// DOM элементы
+const elements = {};
 
 /**
- * UI контроллер - управляет HTML элементами интерфейса
+ * Инициализация DOM элементов
  */
-class UIController {
-  constructor(game) {
-    this.game = game;
-    this.selectedNodeType = 'basic';
-    
-    this.initEventListeners();
-  }
-
-  /**
-   * Инициализация обработчиков событий
-   */
-  initEventListeners() {
-    // Кнопки управления временем
-    document.getElementById('pause-btn').addEventListener('click', () => {
-      this.game.togglePause();
-      this.updatePauseButton();
-    });
-
-    document.getElementById('speed1-btn').addEventListener('click', () => {
-      this.game.setTimeSpeed(1);
-      this.updateSpeedButtons(1);
-    });
-
-    document.getElementById('speed2-btn').addEventListener('click', () => {
-      this.game.setTimeSpeed(2);
-      this.updateSpeedButtons(2);
-    });
-
-    document.getElementById('speed5-btn').addEventListener('click', () => {
-      this.game.setTimeSpeed(5);
-      this.updateSpeedButtons(5);
-    });
-
-    // Кнопки добавления узлов
-    document.querySelectorAll('.add-node-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const type = e.currentTarget.dataset.type;
-        this.selectNodeType(type);
-      });
-    });
-
-    // Клик по canvas - добавление узла
-    const canvas = document.getElementById('gameCanvas');
-    canvas.addEventListener('click', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      this.game.addNode(x, y, this.selectedNodeType);
-    });
-
-    // Hover на узлы
-    canvas.addEventListener('mousemove', (e) => {
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      
-      const node = this.game.renderer.getNodeAt(mouseX, mouseY);
-      
-      // Сброс hover у всех узлов
-      this.game.state.network.nodes.forEach(n => n.hovered = false);
-      
-      if (node) {
-        node.hovered = true;
-        this.showTooltip(e.clientX, e.clientY, node);
-      } else {
-        this.hideTooltip();
-      }
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-      this.hideTooltip();
-    });
-
-    // Режимы просмотра
-    document.querySelectorAll('.view-mode-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mode = e.currentTarget.dataset.mode;
-        this.setViewMode(mode);
-      });
-    });
-
-    // Кнопки управления
-    document.getElementById('save-btn').addEventListener('click', () => {
-      this.game.save();
-      alert('Игра сохранена!');
-    });
-
-    document.getElementById('load-btn').addEventListener('click', () => {
-      const saveData = localStorage.getItem('weavenet_save');
-      if (saveData) {
-        this.game.load(saveData);
-      } else {
-        alert('Нет сохраненных данных');
-      }
-    });
-
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      if (confirm('Сбросить прогресс и начать заново?')) {
-        this.game.reset();
-      }
-    });
-
-    // Модальное окно
-    document.getElementById('modal-close-btn').addEventListener('click', () => {
-      document.getElementById('modal-overlay').classList.add('hidden');
-    });
-  }
-
-  /**
-   * Выбор типа узла для размещения
-   * @param {string} type
-   */
-  selectNodeType(type) {
-    this.selectedNodeType = type;
-    
-    // Обновление визуального выделения кнопок
-    document.querySelectorAll('.add-node-btn').forEach(btn => {
-      btn.classList.remove('selected');
-      if (btn.dataset.type === type) {
-        btn.classList.add('selected');
-      }
-    });
-  }
-
-  /**
-   * Обновление кнопки паузы
-   */
-  updatePauseButton() {
-    const btn = document.getElementById('pause-btn');
-    btn.textContent = this.game.state.isPaused ? '▶' : '⏸';
-  }
-
-  /**
-   * Обновление кнопок скорости
-   * @param {number} speed
-   */
-  updateSpeedButtons(speed) {
-    document.querySelectorAll('#time-controls button[id^="speed"]').forEach(btn => {
-      btn.classList.remove('active');
-    });
-    document.getElementById(`speed${speed}-btn`).classList.add('active');
-  }
-
-  /**
-   * Обновление отображения ресурсов
-   */
-  updateResources() {
-    const infEl = document.getElementById('influence');
-    const dataEl = document.getElementById('data');
-    const incomeEl = document.getElementById('income');
-    
-    if (infEl) infEl.textContent = Math.floor(this.game.state.resources.influence);
-    if (dataEl) dataEl.textContent = Math.floor(this.game.state.resources.data);
-    
-    // Расчет дохода в секунду
-    let infIncome = 0;
-    let dataIncome = 0;
-    
-    if (this.game.state.network) {
-      for (const node of this.game.state.network.nodes) {
-        const nodeConfig = this.game.config.nodeTypes[node.type];
-        if (nodeConfig && nodeConfig.income) {
-          infIncome += nodeConfig.income.influence || 0;
-          dataIncome += nodeConfig.income.data || 0;
-        }
-      }
-    }
-    
-    if (incomeEl) {
-      incomeEl.textContent = `+${infIncome.toFixed(1)} инф/сек | +${dataIncome.toFixed(1)} дан/сек`;
-    }
-  }
-
-  /**
-   * Обновление статистики
-   */
-  updateStats() {
-    const metrics = this.game.state.network.getMetrics();
-    
-    document.getElementById('stat-nodes').textContent = metrics.totalNodes;
-    document.getElementById('stat-edges').textContent = metrics.totalEdges;
-    document.getElementById('stat-coverage').textContent = 
-      Math.round(metrics.coverage) + '%';
-    document.getElementById('stat-latency').textContent = 
-      metrics.avgLatency + 'ms';
-    document.getElementById('stat-packets').textContent = metrics.activePackets;
-    document.getElementById('stat-stability').textContent = 
-      metrics.stability + '%';
-  }
-
-  /**
-   * Обновление таймера миссии
-   * @param {number} gameTime - Время в мс
-   */
-  updateTimer(gameTime) {
-    const seconds = Math.floor(gameTime / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    
-    document.getElementById('timer').textContent = 
-      `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-
-  /**
-   * Обновление целей миссии
-   */
-  updateObjectives() {
-    const mission = this.game.state.currentMission;
-    if (!mission) return;
-    
-    const objectives = mission.objectives;
-    const metrics = this.game.state.network.getMetrics();
-    
-    // Покрытие
-    if (objectives.coverage) {
-      document.getElementById('obj-coverage-target').textContent = objectives.coverage + '%';
-      document.getElementById('obj-coverage-val').textContent = Math.round(metrics.coverage) + '%';
-      document.getElementById('obj-coverage-fill').style.width = 
-        Math.min(100, (metrics.coverage / objectives.coverage) * 100) + '%';
-    }
-    
-    // Задержка
-    if (objectives.maxLatency) {
-      document.getElementById('obj-latency-target').textContent = objectives.maxLatency + 'ms';
-      document.getElementById('obj-latency-val').textContent = metrics.avgLatency + 'ms';
-      // Для задержки: чем меньше, тем лучше
-      const latencyProgress = Math.max(0, 100 - (metrics.avgLatency / objectives.maxLatency) * 100);
-      document.getElementById('obj-latency-fill').style.width = latencyProgress + '%';
-    }
-    
-    // Стабильность
-    if (objectives.minStability) {
-      document.getElementById('obj-stability-target').textContent = objectives.minStability + '%';
-      document.getElementById('obj-stability-val').textContent = metrics.stability + '%';
-      document.getElementById('obj-stability-fill').style.width = 
-        Math.min(100, (metrics.stability / objectives.minStability) * 100) + '%';
-    }
-  }
-
-  /**
-   * Установка режима просмотра
-   * @param {string} mode
-   */
-  setViewMode(mode) {
-    this.game.renderer.setViewMode(mode);
-    
-    document.querySelectorAll('.view-mode-btn').forEach(btn => {
-      btn.classList.remove('active');
-      if (btn.dataset.mode === mode) {
-        btn.classList.add('active');
-      }
-    });
-  }
-
-  /**
-   * Показ тултипа для узла
-   * @param {number} x
-   * @param {number} y
-   * @param {Node} node
-   */
-  showTooltip(x, y, node) {
-    const tooltip = document.getElementById('tooltip');
-    const typeConfig = this.game.config.nodeTypes[node.type];
-    
-    tooltip.innerHTML = `
-      <h4>${typeConfig.icon} ${typeConfig.name} Узел</h4>
-      <div class="stat"><span>Статус:</span> <span>${this.getStatusText(node.status)}</span></div>
-      <div class="stat"><span>Радиус:</span> <span>${node.getEffectiveRadius()}</span></div>
-      <div class="stat"><span>Емкость:</span> <span>${node.getEffectiveCapacity()} Mbps</span></div>
-      <div class="stat"><span>Нагрузка:</span> <span>${Math.round(node.load * 100)}%</span></div>
-      <div class="stat"><span>Энергия:</span> <span>${Math.round(node.energy)}%</span></div>
-      <div class="stat"><span>Связей:</span> <span>${node.connections.length}</span></div>
-    `;
-    
-    tooltip.style.display = 'block';
-    tooltip.style.left = (x + 15) + 'px';
-    tooltip.style.top = (y + 15) + 'px';
-  }
-
-  /**
-   * Скрытие тултипа
-   */
-  hideTooltip() {
-    document.getElementById('tooltip').style.display = 'none';
-  }
-
-  /**
-   * Получение текста статуса
-   * @param {string} status
-   * @returns {string}
-   */
-  getStatusText(status) {
-    const texts = {
-      'active': '🟢 Активен',
-      'overloaded': '🟠 Перегружен',
-      'offline': '🔴 Отключен'
-    };
-    return texts[status] || status;
-  }
-
-  /**
-   * Показ сообщения о завершении миссии
-   * @param {boolean} success
-   */
-  showMissionComplete(success) {
-    const modal = document.getElementById('modal-overlay');
-    const title = document.getElementById('modal-title');
-    const message = document.getElementById('modal-message');
-    
-    if (success) {
-      title.textContent = '🎉 Миссия завершена!';
-      title.style.color = '#00ff88';
-      message.textContent = 'Все цели достигнуты. Отличная работа!';
-    } else {
-      title.textContent = '❌ Миссия провалена';
-      title.style.color = '#ff4444';
-      message.textContent = 'Время вышло. Попробуйте снова!';
-    }
-    
-    modal.classList.remove('hidden');
-  }
+function initElements() {
+  elements.canvas = document.getElementById('gameCanvas');
+  
+  // Ресурсы
+  elements.influence = document.getElementById('influence');
+  elements.data = document.getElementById('data');
+  elements.influenceIncome = document.getElementById('influence-income');
+  elements.dataIncome = document.getElementById('data-income');
+  
+  // Время
+  elements.timer = document.getElementById('timer');
+  elements.btnPause = document.getElementById('btn-pause');
+  elements.btnSpeed1 = document.getElementById('btn-speed1');
+  elements.btnSpeed2 = document.getElementById('btn-speed2');
+  elements.btnSpeed5 = document.getElementById('btn-speed5');
+  
+  // Статистика
+  elements.statNodes = document.getElementById('stat-nodes');
+  elements.statEdges = document.getElementById('stat-edges');
+  
+  // Цели
+  elements.objCoverageCurrent = document.getElementById('obj-coverage-current');
+  elements.objCoverageBar = document.getElementById('obj-coverage-bar');
+  elements.objCoverageTarget = document.getElementById('obj-coverage-target');
+  elements.objLatencyCurrent = document.getElementById('obj-latency-current');
+  elements.objLatencyBar = document.getElementById('obj-latency-bar');
+  elements.objLatencyTarget = document.getElementById('obj-latency-target');
+  elements.objStabilityCurrent = document.getElementById('obj-stability-current');
+  elements.objStabilityBar = document.getElementById('obj-stability-bar');
+  elements.objStabilityTarget = document.getElementById('obj-stability-target');
+  elements.objNodesCurrent = document.getElementById('obj-nodes-current');
+  elements.objNodesBar = document.getElementById('obj-nodes-bar');
+  elements.objNodesTarget = document.getElementById('obj-nodes-target');
+  
+  // Миссия
+  elements.missionName = document.getElementById('mission-name');
+  elements.missionDesc = document.getElementById('mission-desc');
+  
+  // Кнопки узлов
+  elements.nodeButtons = document.querySelectorAll('.add-node-btn');
+  
+  // Выбранный узел
+  elements.selectedNodeInfo = document.getElementById('selected-node-info');
+  elements.nodeDetails = document.getElementById('node-details');
+  elements.btnRemoveNode = document.getElementById('btn-remove-node');
+  
+  // Нижняя панель
+  elements.btnSave = document.getElementById('btn-save');
+  elements.btnLoad = document.getElementById('btn-load');
+  elements.btnReset = document.getElementById('btn-reset');
+  elements.btnViewDefault = document.getElementById('btn-view-default');
+  elements.btnViewCoverage = document.getElementById('btn-view-coverage');
+  elements.btnViewLoad = document.getElementById('btn-view-load');
+  
+  // Модальные окна
+  elements.modalTutorial = document.getElementById('modal-tutorial');
+  elements.tutorialText = document.getElementById('tutorial-text');
+  elements.btnStartGame = document.getElementById('btn-start-game');
+  elements.modalResult = document.getElementById('modal-result');
+  elements.resultTitle = document.getElementById('result-title');
+  elements.resultStats = document.getElementById('result-stats');
+  elements.btnContinue = document.getElementById('btn-continue');
+  elements.btnRestart = document.getElementById('btn-restart');
+  
+  // Тултип
+  elements.tooltip = document.getElementById('tooltip');
 }
 
 /**
- * Основная функция запуска игры
+ * Загрузка конфигурации
+ */
+async function loadConfig() {
+  const response = await fetch('data/config.json');
+  return await response.json();
+}
+
+/**
+ * Загрузка миссии
+ */
+async function loadMission(missionId = 'mission1') {
+  const response = await fetch('data/scenarios.json');
+  const scenarios = await response.json();
+  return scenarios[missionId];
+}
+
+/**
+ * Обновление UI ресурсов
+ */
+function updateResources(data) {
+  elements.influence.textContent = Math.floor(data.resources.influence);
+  elements.data.textContent = Math.floor(data.resources.data);
+  elements.influenceIncome.textContent = `+${data.income.influence.toFixed(1)}/сек`;
+  elements.dataIncome.textContent = `+${data.income.data.toFixed(1)}/сек`;
+}
+
+/**
+ * Обновление UI метрик
+ */
+function updateMetrics(metrics) {
+  const network = game.state.network;
+  
+  // Статистика
+  elements.statNodes.textContent = network.nodes.length;
+  elements.statEdges.textContent = network.edges.length;
+  
+  // Цели
+  const objectives = currentMission.objectives;
+  
+  // Покрытие
+  const coveragePercent = Math.min(100, (metrics.coverage / (objectives.coverage || 100)) * 100);
+  elements.objCoverageCurrent.textContent = `${metrics.coverage.toFixed(1)}%`;
+  elements.objCoverageBar.style.width = `${coveragePercent}%`;
+  elements.objCoverageTarget.textContent = `${objectives.coverage || 0}%`;
+  
+  // Задержка
+  const latencyPercent = objectives.maxLatency 
+    ? Math.min(100, (1 - metrics.avgLatency / objectives.maxLatency) * 100)
+    : 100;
+  elements.objLatencyCurrent.textContent = `${metrics.avgLatency.toFixed(0)}ms`;
+  elements.objLatencyBar.style.width = `${Math.max(0, latencyPercent)}%`;
+  elements.objLatencyTarget.textContent = `${objectives.maxLatency || 0}ms`;
+  
+  // Стабильность
+  const stabilityPercent = Math.min(100, (metrics.stability / (objectives.minStability || 100)) * 100);
+  elements.objStabilityCurrent.textContent = `${metrics.stability.toFixed(1)}%`;
+  elements.objStabilityBar.style.width = `${stabilityPercent}%`;
+  elements.objStabilityTarget.textContent = `${objectives.minStability || 0}%`;
+  
+  // Узлы
+  const nodesPercent = objectives.nodeCount
+    ? Math.min(100, (network.nodes.length / objectives.nodeCount) * 100)
+    : 100;
+  elements.objNodesCurrent.textContent = network.nodes.length;
+  elements.objNodesBar.style.width = `${nodesPercent}%`;
+  elements.objNodesTarget.textContent = objectives.nodeCount || 0;
+  
+  // Время
+  const minutes = Math.floor(game.state.gameTime / 60);
+  const seconds = Math.floor(game.state.gameTime % 60);
+  elements.timer.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Обновление информации о выбранном узле
+ */
+function updateSelectedNodeInfo(node) {
+  if (!node) {
+    elements.selectedNodeInfo.classList.add('hidden');
+    return;
+  }
+  
+  elements.selectedNodeInfo.classList.remove('hidden');
+  
+  const nodeConfig = config.nodeTypes[node.type];
+  const typeName = nodeConfig.name;
+  const income = nodeConfig.income;
+  
+  elements.nodeDetails.innerHTML = `
+    <strong>${typeName}</strong><br>
+    Тип: ${node.type}<br>
+    Статус: ${node.status}<br>
+    Радиус: ${node.radius}м<br>
+    Нагрузка: ${node.load.toFixed(1)}%<br>
+    Доход: +${income.influence} инф/сек, +${income.data} дан/сек<br>
+    Связей: ${node.connections.length}
+  `;
+}
+
+/**
+ * Показать тултип
+ */
+function showTooltip(text, x, y) {
+  elements.tooltip.textContent = text;
+  elements.tooltip.classList.remove('hidden');
+  elements.tooltip.style.left = `${x + 15}px`;
+  elements.tooltip.style.top = `${y + 15}px`;
+}
+
+/**
+ * Скрыть тултип
+ */
+function hideTooltip() {
+  elements.tooltip.classList.add('hidden');
+}
+
+/**
+ * Показать модальное окно обучения
+ */
+function showTutorial(mission) {
+  if (!mission.tutorial || mission.tutorial.length === 0) {
+    elements.modalTutorial.classList.add('hidden');
+    return;
+  }
+  
+  const tutorialHtml = mission.tutorial.map(line => `<p>${line}</p>`).join('');
+  elements.tutorialText.innerHTML = tutorialHtml;
+  elements.modalTutorial.classList.remove('hidden');
+}
+
+/**
+ * Показать результат миссии
+ */
+function showResult(completed, metrics) {
+  elements.resultTitle.textContent = completed ? '🎉 Победа!' : '❌ Поражение';
+  elements.resultTitle.style.color = completed ? '#00ff88' : '#ff4444';
+  
+  elements.resultStats.innerHTML = `
+    <p>Покрытие: ${metrics.coverage.toFixed(1)}%</p>
+    <p>Задержка: ${metrics.avgLatency.toFixed(0)}ms</p>
+    <p>Стабильность: ${metrics.stability.toFixed(1)}%</p>
+    <p>Узлов: ${game.state.network.nodes.length}</p>
+  `;
+  
+  elements.modalResult.classList.remove('hidden');
+}
+
+/**
+ * Настройка обработчиков событий
+ */
+function setupEventListeners() {
+  // Выбор типа узла
+  elements.nodeButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Сброс предыдущего выбора
+      elements.nodeButtons.forEach(b => b.classList.remove('selected'));
+      
+      // Если уже выбран этот тип - отмена
+      if (selectedNodeType === btn.dataset.type) {
+        selectedNodeType = null;
+        game.pendingNodeType = null;
+      } else {
+        btn.classList.add('selected');
+        selectedNodeType = btn.dataset.type;
+        game.pendingNodeType = btn.dataset.type;
+      }
+    });
+    
+    // Тултип при наведении
+    btn.addEventListener('mouseenter', (e) => {
+      if (btn.title) {
+        showTooltip(btn.title, e.clientX, e.clientY);
+      }
+    });
+    
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+  
+  // Управление временем
+  elements.btnPause.addEventListener('click', () => {
+    game.setPaused(!game.state.isPaused);
+    elements.btnPause.textContent = game.state.isPaused ? '▶' : '⏸';
+  });
+  
+  elements.btnSpeed1.addEventListener('click', () => {
+    game.setTimeScale(1);
+    updateTimeSpeedButtons(elements.btnSpeed1);
+  });
+  
+  elements.btnSpeed2.addEventListener('click', () => {
+    game.setTimeScale(2);
+    updateTimeSpeedButtons(elements.btnSpeed2);
+  });
+  
+  elements.btnSpeed5.addEventListener('click', () => {
+    game.setTimeScale(5);
+    updateTimeSpeedButtons(elements.btnSpeed5);
+  });
+  
+  // Управление видом
+  elements.btnViewDefault.addEventListener('click', () => {
+    renderer.setViewMode('default');
+    updateViewButtons(elements.btnViewDefault);
+  });
+  
+  elements.btnViewCoverage.addEventListener('click', () => {
+    renderer.setViewMode('coverage');
+    updateViewButtons(elements.btnViewCoverage);
+  });
+  
+  elements.btnViewLoad.addEventListener('click', () => {
+    renderer.setViewMode('load');
+    updateViewButtons(elements.btnViewLoad);
+  });
+  
+  // Сохранение/загрузка
+  elements.btnSave.addEventListener('click', () => {
+    game.save();
+    alert('Игра сохранена!');
+  });
+  
+  elements.btnLoad.addEventListener('click', async () => {
+    const loaded = await game.load();
+    if (loaded) {
+      alert('Игра загружена!');
+    } else {
+      alert('Нет сохраненных данных');
+    }
+  });
+  
+  elements.btnReset.addEventListener('click', () => {
+    if (confirm('Сбросить прогресс и начать заново?')) {
+      game.reset();
+    }
+  });
+  
+  // Удаление узла
+  elements.btnRemoveNode.addEventListener('click', () => {
+    if (game.state.selectedNode) {
+      game.removeNode(game.state.selectedNode.id);
+      game.state.selectedNode = null;
+      updateSelectedNodeInfo(null);
+    }
+  });
+  
+  // Модальные окна
+  elements.btnStartGame.addEventListener('click', () => {
+    elements.modalTutorial.classList.add('hidden');
+  });
+  
+  elements.btnContinue.addEventListener('click', () => {
+    elements.modalResult.classList.add('hidden');
+  });
+  
+  elements.btnRestart.addEventListener('click', () => {
+    game.reset();
+  });
+  
+  // Движение мыши для тултипа
+  document.addEventListener('mousemove', (e) => {
+    if (!elements.tooltip.classList.contains('hidden')) {
+      elements.tooltip.style.left = `${e.clientX + 15}px`;
+      elements.tooltip.style.top = `${e.clientY + 15}px`;
+    }
+  });
+}
+
+/**
+ * Обновление кнопок скорости
+ */
+function updateTimeSpeedButtons(activeBtn) {
+  [elements.btnSpeed1, elements.btnSpeed2, elements.btnSpeed5].forEach(btn => {
+    btn.classList.toggle('active', btn === activeBtn);
+  });
+}
+
+/**
+ * Обновление кнопок вида
+ */
+function updateViewButtons(activeBtn) {
+  [elements.btnViewDefault, elements.btnViewCoverage, elements.btnViewLoad].forEach(btn => {
+    btn.classList.toggle('active', btn === activeBtn);
+  });
+}
+
+/**
+ * Основная функция запуска
  */
 async function main() {
-  console.log('WeaveNet - Mesh Network Game');
-  console.log('Запуск игры...');
+  initElements();
   
   // Загрузка конфигурации
-  const configResponse = await fetch('data/config.json');
-  const config = await configResponse.json();
+  config = await loadConfig();
   
-  // Загрузка сценариев
-  const scenariosResponse = await fetch('data/scenarios.json');
-  const scenarios = await scenariosResponse.json();
+  // Загрузка миссии
+  currentMission = await loadMission('mission1');
   
-  // Создание canvas и игры
-  const canvas = document.getElementById('gameCanvas');
-  const game = new GameEngine(canvas);
+  // Создание игры
+  game = new GameEngine(elements.canvas);
   
-  // Создание UI контроллера
-  const ui = new UIController(game);
-  game.setUI(ui);
+  // Создание рендерера
+  renderer = new CanvasRenderer(elements.canvas, game);
   
-  // Попытка загрузки сохранения
-  const savedGame = localStorage.getItem('weavenet_save');
+  // Настройка callbacks
+  game.onResourceUpdate = updateResources;
+  game.onMetricsUpdate = updateMetrics;
+  game.onMissionComplete = (metrics) => showResult(true, metrics);
+  game.onMissionFail = (metrics) => showResult(false, metrics);
   
-  if (savedGame) {
-    try {
-      const saveData = JSON.parse(savedGame);
-      // Если есть сохранение, загружаем его
-      await game.load(savedGame);
-      console.log('Сохранение загружено');
-    } catch (e) {
-      console.log('Ошибка загрузки сохранения, начинаем новую игру');
-    }
-  }
+  // Callbacks рендерера
+  renderer.onNodeSelect = updateSelectedNodeInfo;
+  renderer.onNodeAdded = () => {
+    selectedNodeType = null;
+    game.pendingNodeType = null;
+    elements.nodeButtons.forEach(b => b.classList.remove('selected'));
+  };
   
-  // Если нет сохранения или ошибка, начинаем первую миссию
-  if (!game.state.network) {
-    await game.init(scenarios.mission1, config);
-    console.log('Новая игра: Миссия 1');
-  }
+  // Инициализация игры
+  await game.init(currentMission, config);
+  
+  // Настройка UI
+  elements.missionName.textContent = currentMission.name;
+  elements.missionDesc.textContent = currentMission.description;
+  
+  // Настройка обработчиков
+  setupEventListeners();
+  
+  // Показ обучения
+  showTutorial(currentMission);
   
   // Запуск игрового цикла
-  game.loop();
+  requestAnimationFrame((t) => game.loop(t));
   
-  console.log('Игра запущена!');
+  console.log('WeaveNet запущен!');
 }
 
 // Запуск после загрузки DOM

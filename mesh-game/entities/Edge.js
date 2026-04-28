@@ -1,130 +1,77 @@
 /**
- * Класс соединения (ребра графа)
- * Представляет связь между двумя узлами сети
+ * Класс соединения между узлами
  */
 export class Edge {
   constructor(id, nodeA, nodeB) {
     this.id = id;
-    this.nodeA = nodeA;       // Ссылка на первый узел
-    this.nodeB = nodeB;       // Ссылка на второй узел
-    this.strength = 1;        // Сила связи (0-1)
-    this.load = 0;            // Нагрузка на соединение (0-1)
-    this.latency = 0;         // Задержка в мс
-    this.active = true;       // Активно ли соединение
-    this.packets = [];        // Пакеты, проходящие через это соединение
+    this.nodeA = nodeA;
+    this.nodeB = nodeB;
+    this.load = 0;       // Нагрузка на соединение (0-100%)
+    this.quality = 100;  // Качество связи (0-100%)
+    this.active = true;
   }
 
   /**
    * Обновление состояния соединения
-   * @param {number} deltaTime - Время с последнего кадра (мс)
    */
   update(deltaTime) {
-    // Расчет силы связи на основе расстояния
-    const dx = this.nodeA.x - this.nodeB.x;
-    const dy = this.nodeA.y - this.nodeB.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const maxDistance = Math.min(
-      this.nodeA.getEffectiveRadius(),
-      this.nodeB.getEffectiveRadius()
+    // Расчет качества связи на основе расстояния
+    const distance = Math.hypot(
+      this.nodeA.x - this.nodeB.x,
+      this.nodeA.y - this.nodeB.y
     );
     
-    this.strength = Math.max(0, 1 - (distance / maxDistance));
+    const maxDistance = Math.min(this.nodeA.radius, this.nodeB.radius);
+    const distanceRatio = distance / maxDistance;
     
-    // Деактивация если узлы offline
-    if (this.nodeA.status === 'offline' || this.nodeB.status === 'offline') {
-      this.active = false;
-    } else {
-      this.active = this.strength > 0.3;
-    }
+    // Качество падает с расстоянием
+    this.quality = Math.max(0, 100 - (distanceRatio * 50));
     
-    // Расчет задержки
-    if (this.active) {
-      this.latency = 10 + (distance / 10) * (1 + this.load);
-    } else {
-      this.latency = Infinity;
-    }
+    // Учет нагрузки узлов
+    const avgLoad = (this.nodeA.load + this.nodeB.load) / 2;
+    this.load = avgLoad;
     
-    // Постепенное снижение нагрузки
-    this.load = Math.max(0, this.load - 0.01 * (deltaTime / 16));
+    // Соединение неактивно если один из узлов offline
+    this.active = (this.nodeA.status !== 'offline' && 
+                   this.nodeB.status !== 'offline');
   }
 
   /**
-   * Добавление пакета на соединение
-   * @param {Packet} packet
+   * Получение цвета соединения на основе качества
    */
-  addPacket(packet) {
-    this.packets.push(packet);
-    this.load = Math.min(1, this.load + 0.1);
+  getColor() {
+    if (!this.active) return '#444444';
+    
+    if (this.quality > 70) return '#00ff88';      // Зеленый
+    if (this.quality > 40) return '#ffaa00';      // Оранжевый
+    return '#ff4444';                              // Красный
   }
 
   /**
-   * Удаление завершившегося пакета
-   * @param {Packet} packet
+   * Получение толщины линии на основе нагрузки
    */
-  removePacket(packet) {
-    const index = this.packets.indexOf(packet);
-    if (index !== -1) {
-      this.packets.splice(index, 1);
-    }
+  getWidth() {
+    return 1 + (this.load / 100) * 3;
   }
 
   /**
-   * Получение длины соединения
-   * @returns {number}
+   * Получение прозрачности на основе качества
    */
-  getLength() {
-    return this.nodeA.getDistanceTo(this.nodeB);
+  getAlpha() {
+    return 0.3 + (this.quality / 100) * 0.7;
   }
 
   /**
-   * Проверка принадлежности узла соединению
-   * @param {Node} node
-   * @returns {boolean}
+   * Серийнаялизация
    */
-  containsNode(node) {
-    return this.nodeA === node || this.nodeB === node;
-  }
-
-  /**
-   * Получение другого узла соединения
-   * @param {Node} node
-   * @returns {Node|null}
-   */
-  getOtherNode(node) {
-    if (this.nodeA === node) return this.nodeB;
-    if (this.nodeB === node) return this.nodeA;
-    return null;
-  }
-
-  /**
-   * Сериализация для сохранения
-   * @returns {object}
-   */
-  serialize() {
+  toJSON() {
     return {
       id: this.id,
       nodeAId: this.nodeA.id,
       nodeBId: this.nodeB.id,
-      strength: this.strength,
-      load: this.load
+      load: this.load,
+      quality: this.quality,
+      active: this.active
     };
-  }
-
-  /**
-   * Десериализация из сохраненных данных
-   * @param {object} data
-   * @param {Map} nodesMap - Карта узлов по ID
-   * @returns {Edge|null}
-   */
-  static deserialize(data, nodesMap) {
-    const nodeA = nodesMap.get(data.nodeAId);
-    const nodeB = nodesMap.get(data.nodeBId);
-    
-    if (!nodeA || !nodeB) return null;
-    
-    const edge = new Edge(data.id, nodeA, nodeB);
-    edge.strength = data.strength;
-    edge.load = data.load;
-    return edge;
   }
 }

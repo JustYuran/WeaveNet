@@ -7,122 +7,179 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Верхняя панель: ресурсы и управление временем -->
+  <!-- Верхняя панель: ресурсы и время -->
   <div id="ui-top">
-    <div id="resources">
-      <span class="resource-item">📡 Влияние: <span id="influence">0</span></span>
-      <span class="resource-item">💾 Данные: <span id="data">0</span></span>
-      <span class="resource-item" id="income" style="color: #88ff88; font-size: 0.9em;">+0 инф/сек | +0 дан/сек</span>
+    <div id="resources-panel">
+      <div class="resource">
+        <span class="resource-icon">📡</span>
+        <span class="resource-value" id="influence">0</span>
+        <span class="resource-income" id="influence-income">+0.0/сек</span>
+      </div>
+      <div class="resource">
+        <span class="resource-icon">💾</span>
+        <span class="resource-value" id="data">0</span>
+        <span class="resource-income" id="data-income">+0.0/сек</span>
+      </div>
     </div>
+    
     <div id="time-controls">
-      <button id="pause-btn" title="Пауза">⏸</button>
-      <button id="speed1-btn" class="active" title="1x скорость">1x</button>
-      <button id="speed2-btn" title="2x скорость">2x</button>
-      <button id="speed5-btn" title="5x скорость">5x</button>
+      <button id="btn-pause" title="Пауза">⏸</button>
+      <button id="btn-speed1" class="active" title="1x скорость">1x</button>
+      <button id="btn-speed2" title="2x скорость">2x</button>
+      <button id="btn-speed5" title="5x скорость">5x</button>
     </div>
-    <div id="mission-info">
-      <span id="mission-name">Миссия 1</span>
+    
+    <div id="game-time">
       <span id="timer">00:00</span>
     </div>
   </div>
 
-  <!-- Левая панель: создание узлов -->
+  <!-- Левая панель: узлы -->
   <div id="ui-left">
-    <h3>🔧 Узлы</h3>
-    <button class="add-node-btn" data-type="basic">
-      <span class="node-icon">📱</span>
-      <span class="node-name">Basic</span>
-      <span class="node-cost">10 📡</span>
-    </button>
-    <button class="add-node-btn" data-type="relay">
-      <span class="node-icon">📶</span>
-      <span class="node-name">Relay</span>
-      <span class="node-cost">30 📡</span>
-    </button>
-    <button class="add-node-btn" data-type="cache">
-      <span class="node-icon">💾</span>
-      <span class="node-name">Cache</span>
-      <span class="node-cost">25 📡</span>
-    </button>
-    <button class="add-node-btn" data-type="stealth">
-      <span class="node-icon">👻</span>
-      <span class="node-name">Stealth</span>
-      <span class="node-cost">20 📡</span>
-    </button>
+    <h3>📍 Узлы</h3>
     
-    <h3>🎯 Цели миссии</h3>
-    <div id="objectives">
-      <div class="objective" id="obj-coverage">
-        <span>Покрытие: <span id="obj-coverage-val">0%</span> / <span id="obj-coverage-target">50%</span></span>
-        <div class="progress-bar"><div class="progress-fill" id="obj-coverage-fill"></div></div>
-      </div>
-      <div class="objective" id="obj-latency">
-        <span>Задержка: <span id="obj-latency-val">0ms</span> / <span id="obj-latency-target">200ms</span></span>
-        <div class="progress-bar"><div class="progress-fill" id="obj-latency-fill"></div></div>
-      </div>
-      <div class="objective" id="obj-stability">
-        <span>Стабильность: <span id="obj-stability-val">0%</span> / <span id="obj-stability-target">80%</span></span>
-        <div class="progress-bar"><div class="progress-fill" id="obj-stability-fill"></div></div>
-      </div>
+    <div class="node-category">
+      <h4>Основные</h4>
+      <button class="add-node-btn" data-type="basic" 
+              title="Базовый узел (телефон). Дешевый, малый радиус. +0.5 инф/сек, +0.2 дан/сек.">
+        📱 Базовый (10 инф)
+      </button>
+      <button class="add-node-btn" data-type="relay"
+              title="Ретранслятор (роутер). Большой радиус и мощность. +2.0 инф/сек, +1.5 дан/сек.">
+        📶 Ретранслятор (30 инф, 20 дан)
+      </button>
+      <button class="add-node-btn" data-type="cache"
+              title="Кэш-узел (сервер). Снижает задержку, много данных. +1.0 инф/сек, +3.0 дан/сек.">
+        💾 Кэш (25 инф, 40 дан)
+      </button>
+      <button class="add-node-btn" data-type="stealth"
+              title="Скрытый узел. Устойчив к обнаружению. +1.5 инф/сек, +0.5 дан/сек.">
+        👻 Скрытый (40 инф, 10 дан)
+      </button>
+    </div>
+    
+    <div class="node-category">
+      <h4>👥 Пользователи</h4>
+      <button class="add-node-btn user-node" data-type="user_home"
+              title="Домашний узел пользователя. Очень дешевый, малый радиус. +0.3 инф/сек, +0.1 дан/сек.">
+        🏠 Домашний (5 инф)
+      </button>
+      <button class="add-node-btn user-node" data-type="user_enthusiast"
+              title="Энтузиаст (продвинутый пользователь). Хороший баланс. +0.8 инф/сек, +0.6 дан/сек.">
+        🎓 Энтузиаст (15 инф, 5 дан)
+      </button>
+    </div>
+    
+    <div id="selected-node-info" class="hidden">
+      <h4>Выбранный узел</h4>
+      <div id="node-details"></div>
+      <button id="btn-remove-node" class="danger">🗑 Удалить узел</button>
     </div>
   </div>
 
-  <!-- Правая панель: статистика -->
+  <!-- Правая панель: статистика и цели -->
   <div id="ui-right">
-    <h3>📊 Статистика сети</h3>
-    <div class="stat-row">
+    <h3>📊 Статистика</h3>
+    
+    <div class="stat-item">
       <span>Узлов:</span>
       <span id="stat-nodes">0</span>
     </div>
-    <div class="stat-row">
+    <div class="stat-item">
       <span>Соединений:</span>
       <span id="stat-edges">0</span>
     </div>
-    <div class="stat-row">
-      <span>Покрытие:</span>
-      <span id="stat-coverage">0%</span>
-    </div>
-    <div class="stat-row">
-      <span>Средняя задержка:</span>
-      <span id="stat-latency">0ms</span>
-    </div>
-    <div class="stat-row">
-      <span>Пакетов в сети:</span>
-      <span id="stat-packets">0</span>
-    </div>
-    <div class="stat-row">
-      <span>Стабильность:</span>
-      <span id="stat-stability">0%</span>
+    
+    <h4>🎯 Цели миссии</h4>
+    
+    <div class="objective">
+      <div class="objective-header">
+        <span>Покрытие</span>
+        <span id="obj-coverage-current">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div id="obj-coverage-bar" class="progress-fill"></div>
+      </div>
+      <div class="objective-target">Цель: <span id="obj-coverage-target">0%</span></div>
     </div>
     
-    <h3>👁 Режимы просмотра</h3>
-    <div id="view-modes">
-      <button class="view-mode-btn active" data-mode="default">Обычный</button>
-      <button class="view-mode-btn" data-mode="coverage">Покрытие</button>
-      <button class="view-mode-btn" data-mode="latency">Задержка</button>
-      <button class="view-mode-btn" data-mode="load">Нагрузка</button>
+    <div class="objective">
+      <div class="objective-header">
+        <span>Задержка</span>
+        <span id="obj-latency-current">0ms</span>
+      </div>
+      <div class="progress-bar inverse">
+        <div id="obj-latency-bar" class="progress-fill"></div>
+      </div>
+      <div class="objective-target">Макс: <span id="obj-latency-target">0ms</span></div>
     </div>
     
-    <h3>💾 Управление</h3>
-    <button id="save-btn">Сохранить</button>
-    <button id="load-btn">Загрузить</button>
-    <button id="reset-btn">Сброс</button>
+    <div class="objective">
+      <div class="objective-header">
+        <span>Стабильность</span>
+        <span id="obj-stability-current">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div id="obj-stability-bar" class="progress-fill"></div>
+      </div>
+      <div class="objective-target">Мин: <span id="obj-stability-target">0%</span></div>
+    </div>
+    
+    <div class="objective">
+      <div class="objective-header">
+        <span>Количество узлов</span>
+        <span id="obj-nodes-current">0</span>
+      </div>
+      <div class="progress-bar">
+        <div id="obj-nodes-bar" class="progress-fill"></div>
+      </div>
+      <div class="objective-target">Нужно: <span id="obj-nodes-target">0</span></div>
+    </div>
+    
+    <div id="mission-info">
+      <h4>ℹ️ Миссия</h4>
+      <p id="mission-name"></p>
+      <p id="mission-desc"></p>
+    </div>
   </div>
 
   <!-- Canvas игры -->
   <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-  <!-- Тултип для узлов -->
-  <div id="tooltip" class="tooltip"></div>
-
-  <!-- Модальное окно завершения миссии -->
-  <div id="modal-overlay" class="modal-overlay hidden">
-    <div id="modal-content" class="modal-content">
-      <h2 id="modal-title">Миссия завершена!</h2>
-      <p id="modal-message">Все цели достигнуты</p>
-      <button id="modal-close-btn">Продолжить</button>
+  <!-- Нижняя панель: управление -->
+  <div id="ui-bottom">
+    <button id="btn-save">💾 Сохранить</button>
+    <button id="btn-load">📂 Загрузить</button>
+    <button id="btn-reset" class="danger">🔄 Сброс</button>
+    
+    <div id="view-controls">
+      <button id="btn-view-default" class="active">Обычный</button>
+      <button id="btn-view-coverage">Покрытие</button>
+      <button id="btn-view-load">Нагрузка</button>
     </div>
   </div>
+
+  <!-- Модальное окно обучения -->
+  <div id="modal-tutorial" class="modal hidden">
+    <div class="modal-content">
+      <h2>🎮 Добро пожаловать в WeaveNet!</h2>
+      <div id="tutorial-text"></div>
+      <button id="btn-start-game" class="primary">Начать игру</button>
+    </div>
+  </div>
+
+  <!-- Модальное окно победы/поражения -->
+  <div id="modal-result" class="modal hidden">
+    <div class="modal-content">
+      <h2 id="result-title"></h2>
+      <div id="result-stats"></div>
+      <button id="btn-continue" class="primary">Продолжить</button>
+      <button id="btn-restart">Заново</button>
+    </div>
+  </div>
+
+  <!-- Тултип -->
+  <div id="tooltip" class="tooltip hidden"></div>
 
   <script type="module" src="main.js"></script>
 </body>

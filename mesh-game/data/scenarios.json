@@ -1,97 +1,111 @@
 {
   "mission1": {
     "id": "mission1",
-    "name": "Первый узел",
-    "description": "Постройте базовую mesh-сеть для покрытия территории",
+    "name": "Первые шаги",
+    "description": "Постройте базовую сеть из 3 узлов и достигните 30% покрытия.",
     "map": {
-      "width": 800,
-      "height": 600,
+      "width": 1000,
+      "height": 800,
+      "obstacles": [],
+      "jammerZones": []
+    },
+    "initialNodes": [
+      {"x": 200, "y": 400, "type": "basic"}
+    ],
+    "objectives": {
+      "coverage": 30,
+      "maxLatency": 500,
+      "minStability": 50,
+      "nodeCount": 3,
+      "timeLimit": null
+    },
+    "resources": {
+      "influence": 50,
+      "data": 20
+    },
+    "events": [],
+    "tutorial": [
+      "Добро пожаловать в WeaveNet!",
+      "1. Выберите 'Базовый узел' слева (стоит 10 влияния).",
+      "2. Кликните на карту рядом с существующим узлом, чтобы соединить их.",
+      "3. Следите за ресурсами: они начисляются каждую секунду автоматически!",
+      "4. Цель: 3 узла и 30% покрытия."
+    ]
+  },
+  "mission2": {
+    "id": "mission2",
+    "name": "Расширение сети",
+    "description": "Создайте устойчивую сеть с покрытием 60% и стабильностью выше 80%.",
+    "map": {
+      "width": 1200,
+      "height": 900,
       "obstacles": [
-        {"x": 300, "y": 250, "radius": 40},
-        {"x": 500, "y": 350, "radius": 50}
+        {"x": 600, "y": 450, "radius": 100}
       ],
       "jammerZones": []
     },
     "initialNodes": [
-      {"x": 100, "y": 100, "type": "basic"}
+      {"x": 150, "y": 200, "type": "basic"},
+      {"x": 150, "y": 700, "type": "basic"}
     ],
     "objectives": {
-      "coverage": 50,
-      "maxLatency": 200,
+      "coverage": 60,
+      "maxLatency": 300,
       "minStability": 80,
+      "nodeCount": 8,
       "timeLimit": null
     },
     "resources": {
       "influence": 100,
       "data": 50
     },
-    "events": []
-  },
-  "mission2": {
-    "id": "mission2",
-    "name": "Расширение сети",
-    "description": "Увеличьте покрытие до 75% и обеспечьте стабильность",
-    "map": {
-      "width": 800,
-      "height": 600,
-      "obstacles": [
-        {"x": 200, "y": 300, "radius": 60},
-        {"x": 600, "y": 200, "radius": 50},
-        {"x": 400, "y": 450, "radius": 40}
-      ],
-      "jammerZones": [
-        {"x": 350, "y": 300, "radius": 80}
-      ]
-    },
-    "initialNodes": [
-      {"x": 100, "y": 100, "type": "basic"},
-      {"x": 700, "y": 500, "type": "basic"}
-    ],
-    "objectives": {
-      "coverage": 75,
-      "maxLatency": 150,
-      "minStability": 85,
-      "timeLimit": 600
-    },
-    "resources": {
-      "influence": 150,
-      "data": 100
-    },
     "events": [
-      {"type": "jammer", "time": 120, "duration": 60, "position": {"x": 350, "y": 300, "radius": 80}}
+      {"type": "surge", "time": 60, "duration": 30}
+    ],
+    "tutorial": [
+      "Миссия 2: Расширение сети",
+      "Используйте разные типы узлов:",
+      "- Ретранслятор: большой радиус, дорого",
+      "- Кэш-узел: снижает задержку",
+      "- Пользователи: дешевые узлы для заполнения пробелов"
     ]
   },
   "mission3": {
     "id": "mission3",
-    "name": "Устойчивая сеть",
-    "description": "Постройте отказоустойчивую сеть с резервными путями",
+    "name": "Зона помех",
+    "description": "Постройте сеть в условиях работы глушилки сигнала.",
     "map": {
-      "width": 800,
-      "height": 600,
-      "obstacles": [
-        {"x": 150, "y": 200, "radius": 50},
-        {"x": 650, "y": 400, "radius": 50},
-        {"x": 400, "y": 300, "radius": 70}
-      ],
-      "jammerZones": []
+      "width": 1400,
+      "height": 1000,
+      "obstacles": [],
+      "jammerZones": [
+        {"x": 700, "y": 500, "radius": 200, "strength": 0.5}
+      ]
     },
     "initialNodes": [
-      {"x": 80, "y": 80, "type": "basic"},
-      {"x": 720, "y": 520, "type": "relay"}
+      {"x": 200, "y": 500, "type": "relay"}
     ],
     "objectives": {
-      "coverage": 85,
-      "maxLatency": 100,
-      "minStability": 90,
-      "timeLimit": 900
+      "coverage": 50,
+      "maxLatency": 400,
+      "minStability": 70,
+      "nodeCount": 10,
+      "timeLimit": 600
     },
     "resources": {
       "influence": 200,
-      "data": 150
+      "data": 100
     },
     "events": [
-      {"type": "storm", "time": 180, "duration": 90},
-      {"type": "surge", "time": 300, "duration": 45}
+      {"type": "jammer", "time": 30, "duration": 120, "position": {"x": 700, "y": 500}}
+    ],
+    "tutorial": [
+      "Миссия 3: Зона помех",
+      "Внимание! Глушилка снижает радиус действия узлов.",
+      "Стратегия:",
+      "- Используйте больше узлов с меньшим расстоянием",
+      "- Скрытые узлы устойчивее к помехам",
+      "- Обходите зону помех по краям"
     ]
   }
 }
