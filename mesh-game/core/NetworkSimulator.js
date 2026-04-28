@@ -115,7 +115,7 @@ export class NetworkSimulator {
       }
     }
     
-    // Для каждого роутера генерируем от 1 до 5 пользователей в радиусе 5 участков
+    // Для каждого роутера генерируем от 1 до 5 пользователей в радиусе 5 участков по кругу
     const userPositions = [];
     for (const router of routerPositions) {
       const userCount = Math.floor(Math.random() * 5) + 1; // 1-5 пользователей
@@ -123,9 +123,9 @@ export class NetworkSimulator {
         let tx, ty, x, y, valid;
         let attempts = 0;
         do {
-          // Случайная позиция в радиусе 5 участков от роутера
-          const angle = Math.random() * Math.PI * 2;
-          const distanceTiles = Math.random() * 5; // до 5 участков
+          // Размещаем пользователей по кругу от роутера (в радиусе 5 участков)
+          const angle = (i / userCount) * Math.PI * 2 + Math.random() * 0.5; // Равномерно по кругу с небольшим разбросом
+          const distanceTiles = 2 + Math.random() * 3; // от 2 до 5 участков от роутера
           tx = Math.floor(router.tx + Math.cos(angle) * distanceTiles);
           ty = Math.floor(router.ty + Math.sin(angle) * distanceTiles);
           
@@ -143,7 +143,7 @@ export class NetworkSimulator {
           const terrain = this.terrainMap[tx]?.[ty] || 'plain';
           if (terrain === 'water') valid = false;
           
-          // Проверка: не ближе 0.5 метра (1 тайл) от других юзеров и роутеров
+          // Проверка: не ближе 1 тайла от других юзеров и роутеров
           let tooClose = false;
           for (const pos of userPositions) {
             const dist = Math.hypot(tx - pos.tx, ty - pos.ty);
@@ -170,8 +170,8 @@ export class NetworkSimulator {
       }
     }
     
-    // Дополнительно 500 пользователей случайным образом по карте (не ближе 25м от хаба)
-    for (let i = 0; i < 500; i++) {
+    // Дополнительно пользователи случайным образом по всей карте (не связанные с роутерами)
+    for (let i = 0; i < 300; i++) {
       let tx, ty, x, y, valid;
       let attempts = 0;
       do {
