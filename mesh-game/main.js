@@ -119,8 +119,11 @@ function updateResources(data) {
 function updateMetrics(metrics) {
   const network = game.state.network;
   
-  // Статистика
-  elements.statNodes.textContent = network.nodes.length;
+  // Статистика - считаем только узлы игрока (не static и не hub)
+  const playerNodes = network.nodes.filter(n => 
+    !n.isStatic && n.type !== 'hub'
+  );
+  elements.statNodes.textContent = playerNodes.length;
   elements.statEdges.textContent = network.edges.length;
   
   // Цели
@@ -146,11 +149,11 @@ function updateMetrics(metrics) {
   elements.objStabilityBar.style.width = `${stabilityPercent}%`;
   elements.objStabilityTarget.textContent = `${objectives.minStability || 0}%`;
   
-  // Узлы
+  // Узлы (цель по количеству узлов игрока)
   const nodesPercent = objectives.nodeCount
-    ? Math.min(100, (network.nodes.length / objectives.nodeCount) * 100)
+    ? Math.min(100, (playerNodes.length / objectives.nodeCount) * 100)
     : 100;
-  elements.objNodesCurrent.textContent = network.nodes.length;
+  elements.objNodesCurrent.textContent = playerNodes.length;
   elements.objNodesBar.style.width = `${nodesPercent}%`;
   elements.objNodesTarget.textContent = objectives.nodeCount || 0;
   
@@ -180,8 +183,12 @@ function updateSelectedNodeInfo(node) {
     return;
   }
   
+  // Нельзя удалять статические узлы (home, router) и хаб
+  const canRemove = !nodeConfig.isStatic && !nodeConfig.isHub;
+  
   const typeName = nodeConfig.name;
-  const income = nodeConfig.income;
+  const energyCost = nodeConfig.energyCost || 0;
+  const throughput = nodeConfig.throughput || 0;
   
   elements.nodeDetails.innerHTML = `
     <strong>${typeName}</strong><br>
@@ -189,9 +196,17 @@ function updateSelectedNodeInfo(node) {
     Статус: ${node.status}<br>
     Радиус: ${node.radius}м<br>
     Нагрузка: ${node.load.toFixed(1)}%<br>
-    Доход: +${income.influence} инф/сек, +${income.data} дан/сек<br>
+    Потребление: ${energyCost} Э/сек<br>
+    Пропускная способность: ${throughput} инф/сек<br>
     Связей: ${node.connections.length}
   `;
+  
+  // Показываем кнопку удаления только если узел можно удалить
+  if (canRemove) {
+    elements.btnRemoveNode.classList.remove('hidden');
+  } else {
+    elements.btnRemoveNode.classList.add('hidden');
+  }
 }
 
 /**
@@ -415,15 +430,8 @@ async function main() {
   // Инициализация игры
   await game.init(currentMission, config);
   
-  // Настройка UI
-  elements.missionName.textContent = currentMission.name;
-  elements.missionDesc.textContent = currentMission.description;
-  
   // Настройка обработчиков
   setupEventListeners();
-  
-  // Показ обучения
-  showTutorial(currentMission);
   
   // Запуск игрового цикла
   requestAnimationFrame((t) => game.loop(t));

@@ -649,8 +649,14 @@ export class GameEngine {
     const node = this.state.network.getNodeById(nodeId);
     if (!node) return false;
     
-    // Возврат части энергии (50%)
+    // Нельзя удалять статические узлы (home, router) и хаб
     const nodeConfig = this.config.nodeTypes[node.type];
+    if (!nodeConfig || nodeConfig.isStatic || nodeConfig.isHub) {
+      console.log('Нельзя удалить этот тип узла');
+      return false;
+    }
+    
+    // Возврат части энергии (50%)
     if (nodeConfig && nodeConfig.energyCost) {
       this.state.resources.energy += Math.floor(nodeConfig.energyCost * 0.5);
     }
