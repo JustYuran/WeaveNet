@@ -155,10 +155,30 @@ class UIController {
    * Обновление отображения ресурсов
    */
   updateResources() {
-    document.getElementById('influence').textContent = 
-      Math.floor(this.game.state.resources.influence);
-    document.getElementById('data').textContent = 
-      Math.floor(this.game.state.resources.data);
+    const infEl = document.getElementById('influence');
+    const dataEl = document.getElementById('data');
+    const incomeEl = document.getElementById('income');
+    
+    if (infEl) infEl.textContent = Math.floor(this.game.state.resources.influence);
+    if (dataEl) dataEl.textContent = Math.floor(this.game.state.resources.data);
+    
+    // Расчет дохода в секунду
+    let infIncome = 0;
+    let dataIncome = 0;
+    
+    if (this.game.state.network) {
+      for (const node of this.game.state.network.nodes) {
+        const nodeConfig = this.game.config.nodeTypes[node.type];
+        if (nodeConfig && nodeConfig.income) {
+          infIncome += nodeConfig.income.influence || 0;
+          dataIncome += nodeConfig.income.data || 0;
+        }
+      }
+    }
+    
+    if (incomeEl) {
+      incomeEl.textContent = `+${infIncome.toFixed(1)} инф/сек | +${dataIncome.toFixed(1)} дан/сек`;
+    }
   }
 
   /**

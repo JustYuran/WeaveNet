@@ -7,7 +7,8 @@
       "radius": 50,
       "capacity": 50,
       "energyConsumption": 1,
-      "color": "#00ff88"
+      "color": "#00ff88",
+      "income": {"influence": 0.5, "data": 0.2}
     },
     "relay": {
       "name": "Relay",
@@ -16,7 +17,8 @@
       "radius": 150,
       "capacity": 200,
       "energyConsumption": 5,
-      "color": "#00ccff"
+      "color": "#00ccff",
+      "income": {"influence": 1.5, "data": 0.8}
     },
     "cache": {
       "name": "Cache",
@@ -25,7 +27,8 @@
       "radius": 80,
       "capacity": 100,
       "energyConsumption": 3,
-      "color": "#ffaa00"
+      "color": "#ffaa00",
+      "income": {"influence": 1.0, "data": 1.0}
     },
     "stealth": {
       "name": "Stealth",
@@ -34,7 +37,8 @@
       "radius": 75,
       "capacity": 30,
       "energyConsumption": 2,
-      "color": "#aa00ff"
+      "color": "#aa00ff",
+      "income": {"influence": 0.8, "data": 0.5}
     }
   },
   "simulation": {
