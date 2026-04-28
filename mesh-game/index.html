@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeaveNet - Mesh Network Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Верхняя панель: ресурсы и управление временем -->
+  <div id="ui-top">
+    <div id="resources">
+      <span class="resource-item">📡 Влияние: <span id="influence">0</span></span>
+      <span class="resource-item">💾 Данные: <span id="data">0</span></span>
+    </div>
+    <div id="time-controls">
+      <button id="pause-btn" title="Пауза">⏸</button>
+      <button id="speed1-btn" class="active" title="1x скорость">1x</button>
+      <button id="speed2-btn" title="2x скорость">2x</button>
+      <button id="speed5-btn" title="5x скорость">5x</button>
+    </div>
+    <div id="mission-info">
+      <span id="mission-name">Миссия 1</span>
+      <span id="timer">00:00</span>
+    </div>
+  </div>
+
+  <!-- Левая панель: создание узлов -->
+  <div id="ui-left">
+    <h3>🔧 Узлы</h3>
+    <button class="add-node-btn" data-type="basic">
+      <span class="node-icon">📱</span>
+      <span class="node-name">Basic</span>
+      <span class="node-cost">10 📡</span>
+    </button>
+    <button class="add-node-btn" data-type="relay">
+      <span class="node-icon">📶</span>
+      <span class="node-name">Relay</span>
+      <span class="node-cost">30 📡</span>
+    </button>
+    <button class="add-node-btn" data-type="cache">
+      <span class="node-icon">💾</span>
+      <span class="node-name">Cache</span>
+      <span class="node-cost">25 📡</span>
+    </button>
+    <button class="add-node-btn" data-type="stealth">
+      <span class="node-icon">👻</span>
+      <span class="node-name">Stealth</span>
+      <span class="node-cost">20 📡</span>
+    </button>
+    
+    <h3>🎯 Цели миссии</h3>
+    <div id="objectives">
+      <div class="objective" id="obj-coverage">
+        <span>Покрытие: <span id="obj-coverage-val">0%</span> / <span id="obj-coverage-target">50%</span></span>
+        <div class="progress-bar"><div class="progress-fill" id="obj-coverage-fill"></div></div>
+      </div>
+      <div class="objective" id="obj-latency">
+        <span>Задержка: <span id="obj-latency-val">0ms</span> / <span id="obj-latency-target">200ms</span></span>
+        <div class="progress-bar"><div class="progress-fill" id="obj-latency-fill"></div></div>
+      </div>
+      <div class="objective" id="obj-stability">
+        <span>Стабильность: <span id="obj-stability-val">0%</span> / <span id="obj-stability-target">80%</span></span>
+        <div class="progress-bar"><div class="progress-fill" id="obj-stability-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Правая панель: статистика -->
+  <div id="ui-right">
+    <h3>📊 Статистика сети</h3>
+    <div class="stat-row">
+      <span>Узлов:</span>
+      <span id="stat-nodes">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Соединений:</span>
+      <span id="stat-edges">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Покрытие:</span>
+      <span id="stat-coverage">0%</span>
+    </div>
+    <div class="stat-row">
+      <span>Средняя задержка:</span>
+      <span id="stat-latency">0ms</span>
+    </div>
+    <div class="stat-row">
+      <span>Пакетов в сети:</span>
+      <span id="stat-packets">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Стабильность:</span>
+      <span id="stat-stability">0%</span>
+    </div>
+    
+    <h3>👁 Режимы просмотра</h3>
+    <div id="view-modes">
+      <button class="view-mode-btn active" data-mode="default">Обычный</button>
+      <button class="view-mode-btn" data-mode="coverage">Покрытие</button>
+      <button class="view-mode-btn" data-mode="latency">Задержка</button>
+      <button class="view-mode-btn" data-mode="load">Нагрузка</button>
+    </div>
+    
+    <h3>💾 Управление</h3>
+    <button id="save-btn">Сохранить</button>
+    <button id="load-btn">Загрузить</button>
+    <button id="reset-btn">Сброс</button>
+  </div>
+
+  <!-- Canvas игры -->
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+  <!-- Тултип для узлов -->
+  <div id="tooltip" class="tooltip"></div>
+
+  <!-- Модальное окно завершения миссии -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal-content" class="modal-content">
+      <h2 id="modal-title">Миссия завершена!</h2>
+      <p id="modal-message">Все цели достигнуты</p>
+      <button id="modal-close-btn">Продолжить</button>
+    </div>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
