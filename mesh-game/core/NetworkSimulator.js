@@ -49,6 +49,7 @@ export class NetworkSimulator {
     
     this.obstacles = missionConfig.map?.obstacles || [];
     this.jammerZones = missionConfig.map?.jammerZones || [];
+    this.homeNodes = missionConfig.map?.homeNodes || [];
     
     // Создание начальных узлов
     if (missionConfig.initialNodes) {
@@ -57,6 +58,13 @@ export class NetworkSimulator {
       }
     }
     
+    // Создание домашних узлов (пользовательские ретрансляторы)
+    if (this.homeNodes) {
+      for (const nodeData of this.homeNodes) {
+        this.addNode(nodeData.x, nodeData.y, nodeData.type);
+      }
+    }
+
     // Первичный расчет соединений
     this.updateConnections();
   }
@@ -130,29 +138,42 @@ export class NetworkSimulator {
     this.edges = [];
     this.nextEdgeId = 1;
     
-    // Очистка соединений у узлов
+    // Сброс статуса изоляции и очистка соединений у всех узлов
     for (const node of this.nodes) {
       node.connections = [];
+      if (node.status !== 'offline') {
+        node.status = 'isolated';
+      }
     }
     
     // Поиск и создание новых соединений
     const connectedPairs = new Set();
     
-    for (const node of this.nodes) {
+    for (let i = 0; i < this.nodes.length; i++) {
+      const node = this.nodes[i];
+      
+      // Пропускаем оффлайн узлы
+      if (node.status === 'offline') continue;
+      
       // Эффективный радиус с учетом помех
-      const effectiveRadius = node.update(0, this, this.jammerZones);
+      const effectiveRadius = node.getEffectiveRadius(this.jammerZones);
       
-      // Поиск соседей в радиусе
-      const neighbors = this.spatialHash.queryRange(node.x, node.y, effectiveRadius);
-      
-      for (const neighbor of neighbors) {
-        if (neighbor.id === node.id) continue;
+      // Проверяем все остальные узлы напрямую (без spatial hash для надежности)
+      for (let j = i + 1; j < this.nodes.length; j++) {
+        const neighbor = this.nodes[j];
         
-        // Проверка взаимного покрытия
-        const distance = node.getDistanceTo(neighbor);
-        const neighborEffectiveRadius = neighbor.update(0, this, this.jammerZones);
+        if (neighbor.status === 'offline') continue;
         
-        if (distance <= effectiveRadius && distance <= neighborEffectiveRadius) {
+        const neighborEffectiveRadius = neighbor.getEffectiveRadius(this.jammerZones);
+        
+        // Расстояние между узлами
+        const distance = Math.hypot(node.x - neighbor.x, node.y - neighbor.y);
+        
+        // Условие соединения: расстояние <= минимального из радиусов * коэффициент
+        // Используем более мягкое условие для лучшей играбельности
+        const maxConnectDist = Math.min(effectiveRadius, neighborEffectiveRadius) * 1.2;
+        
+        if (distance <= maxConnectDist) {
           const pairKey = [node.id, neighbor.id].sort().join('-');
           
           if (!connectedPairs.has(pairKey)) {
@@ -165,6 +186,10 @@ export class NetworkSimulator {
             // Добавление соединения у узлов
             node.connections.push(neighbor.id);
             neighbor.connections.push(node.id);
+            
+            // Обновляем статус на активный
+            if (node.status === 'isolated') node.status = 'active';
+            if (neighbor.status === 'isolated') neighbor.status = 'active';
           }
         }
       }
@@ -239,7 +264,7 @@ export class NetworkSimulator {
     
     for (const node of this.nodes) {
       // Узел дает доход только если подключен к сети (имеет соединения)
-      if (node.connections.length > 0 || this.nodes.length === 1) {
+      if (node.status === 'active' || (node.status === 'isolated' && this.nodes.length === 1)) {
         totalInfluence += node.income.influence;
         totalData += node.income.data;
       }
