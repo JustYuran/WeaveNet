@@ -60,18 +60,67 @@ export class NetworkSimulator {
     const hubY = this.mapHeight / 2;
     this.addNode(hubX, hubY, 'hub');
     
-    // Генерация 550 пользователей/домов (синие точки 3px) - генерируют информацию
-    for (let i = 0; i < 550; i++) {
-      const x = Math.random() * this.mapWidth;
-      const y = Math.random() * this.mapHeight;
-      this.addNode(x, y, 'home');
+    // Генерация 50 роутеров случайным образом на карте
+    const routerPositions = [];
+    for (let i = 0; i < 50; i++) {
+      let x, y, valid;
+      let attempts = 0;
+      do {
+        x = Math.random() * this.mapWidth;
+        y = Math.random() * this.mapHeight;
+        // Проверка: не ближе 25 метров от хаба
+        const distToHub = Math.hypot(x - hubX, y - hubY);
+        valid = distToHub >= 25;
+        attempts++;
+      } while (!valid && attempts < 100);
+      
+      if (valid) {
+        this.addNode(x, y, 'router');
+        routerPositions.push({ x, y });
+      }
     }
     
-    // Генерация 60 роутеров (оранжевые точки 6px) - передатчики информации
-    for (let i = 0; i < 60; i++) {
-      const x = Math.random() * this.mapWidth;
-      const y = Math.random() * this.mapHeight;
-      this.addNode(x, y, 'router');
+    // Для каждого роутера генерируем от 1 до 5 пользователей в радиусе его покрытия
+    const userPositions = [];
+    for (const router of routerPositions) {
+      const userCount = Math.floor(Math.random() * 5) + 1; // 1-5 пользователей
+      for (let i = 0; i < userCount; i++) {
+        let x, y, valid;
+        let attempts = 0;
+        do {
+          // Случайная позиция в радиусе 80px от роутера (радиус роутера)
+          const angle = Math.random() * Math.PI * 2;
+          const distance = Math.random() * 80;
+          x = router.x + Math.cos(angle) * distance;
+          y = router.y + Math.sin(angle) * distance;
+          // Проверка границ карты
+          valid = x >= 0 && x <= this.mapWidth && y >= 0 && y <= this.mapHeight;
+          attempts++;
+        } while (!valid && attempts < 100);
+        
+        if (valid) {
+          this.addNode(x, y, 'home');
+          userPositions.push({ x, y });
+        }
+      }
+    }
+    
+    // Дополнительно 500 пользователей случайным образом по карте (не ближе 25м от хаба)
+    for (let i = 0; i < 500; i++) {
+      let x, y, valid;
+      let attempts = 0;
+      do {
+        x = Math.random() * this.mapWidth;
+        y = Math.random() * this.mapHeight;
+        // Проверка: не ближе 25 метров от хаба
+        const distToHub = Math.hypot(x - hubX, y - hubY);
+        valid = distToHub >= 25;
+        attempts++;
+      } while (!valid && attempts < 100);
+      
+      if (valid) {
+        this.addNode(x, y, 'home');
+      }
     }
     
     // Автоматическое соединение пользователей и роутеров на расстоянии ≤ 5 пикселей
@@ -140,6 +189,12 @@ export class NetworkSimulator {
     if (index === -1) return false;
     
     const node = this.nodes[index];
+    
+    // Нельзя удалять статические узлы (home, router) и хаб
+    if (node.isStatic || node.isHub) {
+      console.log('Нельзя удалить статический узел или хаб');
+      return false;
+    }
     
     // Удаление связанных ребер
     this.edges = this.edges.filter(edge => 
@@ -592,7 +647,16 @@ export class NetworkSimulator {
    */
   canBuildAt(x, y) {
     const terrain = this.getTerrainType(x, y);
-    return terrain !== 'water';
+    if (terrain === 'water') return false;
+    
+    // Проверка: нельзя строить ближе 25 метров от хаба
+    const hub = this.nodes.find(n => n.type === 'hub');
+    if (hub) {
+      const distToHub = Math.hypot(x - hub.x, y - hub.y);
+      if (distToHub < 25) return false;
+    }
+    
+    return true;
   }
 
   /**
