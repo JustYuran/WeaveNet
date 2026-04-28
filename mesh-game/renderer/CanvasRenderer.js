@@ -45,7 +45,17 @@ export class CanvasRenderer {
       this.lastMouseY = this.mouseY;
       
       // Определение узла под курсором
+      const prevHoverNode = this.game.state.hoverNode;
       this.updateHoverNode();
+      
+      // Обновление тултипа при изменении hover узла
+      if (this.onNodeHover) {
+        if (this.game.state.hoverNode && this.game.state.hoverNode !== prevHoverNode) {
+          this.onNodeHover(this.game.state.hoverNode, e.clientX, e.clientY);
+        } else if (!this.game.state.hoverNode && prevHoverNode) {
+          this.onNodeHover(null, e.clientX, e.clientY);
+        }
+      }
     });
     
     // Нажатие кнопки мыши

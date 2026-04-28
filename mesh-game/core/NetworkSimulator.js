@@ -450,6 +450,7 @@ export class NetworkSimulator {
     this.resourceAccumulator += deltaTime;
     if (this.resourceAccumulator >= 1.0) {
       this.calculateIncome();
+      this.calculateInfoGain();
       this.resourceAccumulator -= 1.0;
     }
     
@@ -510,6 +511,9 @@ export class NetworkSimulator {
         totalInfoGain += throughput;
       }
     }
+    
+    // Добавляем информацию к доходу data
+    this.incomePerSecond.data = (this.incomePerSecond.data || 0) + totalInfoGain;
     
     return totalInfoGain;
   }

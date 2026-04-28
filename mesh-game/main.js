@@ -312,22 +312,6 @@ function setupEventListeners() {
     updateTimeSpeedButtons(elements.btnSpeed5);
   });
   
-  // Управление видом
-  elements.btnViewDefault.addEventListener('click', () => {
-    renderer.setViewMode('default');
-    updateViewButtons(elements.btnViewDefault);
-  });
-  
-  elements.btnViewCoverage.addEventListener('click', () => {
-    renderer.setViewMode('coverage');
-    updateViewButtons(elements.btnViewCoverage);
-  });
-  
-  elements.btnViewLoad.addEventListener('click', () => {
-    renderer.setViewMode('load');
-    updateViewButtons(elements.btnViewLoad);
-  });
-  
   // Удаление узла
   elements.btnRemoveNode.addEventListener('click', () => {
     if (game.state.selectedNode) {
@@ -364,15 +348,6 @@ function setupEventListeners() {
  */
 function updateTimeSpeedButtons(activeBtn) {
   [elements.btnSpeed1, elements.btnSpeed2, elements.btnSpeed5].forEach(btn => {
-    btn.classList.toggle('active', btn === activeBtn);
-  });
-}
-
-/**
- * Обновление кнопок вида
- */
-function updateViewButtons(activeBtn) {
-  [elements.btnViewDefault, elements.btnViewCoverage, elements.btnViewLoad].forEach(btn => {
     btn.classList.toggle('active', btn === activeBtn);
   });
 }
