@@ -106,8 +106,8 @@ async function loadMission(missionId = 'mission1') {
  * Обновление UI ресурсов
  */
 function updateResources(data) {
-  elements.influence.textContent = Math.floor(data.resources.influence);
-  elements.data.textContent = Math.floor(data.resources.data);
+  elements.influence.textContent = Math.floor(data.resources.energy);
+  elements.data.textContent = Math.floor(data.resources.info);
   const income = data.income || {};
   elements.influenceIncome.textContent = `+${(income.energy || 0).toFixed(1)}/сек`;
   elements.dataIncome.textContent = `+${(income.info || 0).toFixed(1)}/сек`;
