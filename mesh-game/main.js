@@ -171,6 +171,14 @@ function updateSelectedNodeInfo(node) {
   elements.selectedNodeInfo.classList.remove('hidden');
   
   const nodeConfig = config.nodeTypes[node.type];
+  
+  // Защита от отсутствующей конфигурации узла
+  if (!nodeConfig) {
+    console.warn('Конфигурация узла не найдена для типа:', node.type);
+    elements.selectedNodeInfo.classList.add('hidden');
+    return;
+  }
+  
   const typeName = nodeConfig.name;
   const income = nodeConfig.income;
   
