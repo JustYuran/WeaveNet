@@ -8,8 +8,16 @@ export class Node {
     this.y = y;
     this.type = type;
     this.terrainType = terrainType;
-    this.config = config.nodeTypes[type] || config.nodeTypes.basic;
-    this.terrainConfig = config.terrain[terrainType] || config.terrain.plain;
+    
+    // Защита от отсутствующего конфига
+    if (!config || !config.nodeTypes) {
+      console.warn('Config not loaded, using defaults for node', id);
+      this.config = { radius: 100, capacity: 50, income: { influence: 0.5, data: 0.2 }, cost: { influence: 10, data: 0 }, emoji: '📱' };
+      this.terrainConfig = { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
+    } else {
+      this.config = config.nodeTypes[type] || config.nodeTypes.basic;
+      this.terrainConfig = (config.terrain && config.terrain[terrainType]) || (config.terrain && config.terrain.plain) || { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
+    }
     
     // Параметры из конфига с модификаторами местности
     const radiusMod = this.terrainConfig.radiusModifier || 1.0;
