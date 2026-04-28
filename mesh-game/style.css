@@ -51,11 +51,17 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 18px;
+  font-size: 14px;
 }
 
 .resource-icon {
   font-size: 24px;
+}
+
+.resource-label {
+  font-size: 12px;
+  color: #aaa;
+  min-width: 70px;
 }
 
 .resource-value {

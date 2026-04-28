@@ -424,9 +424,13 @@ export class NetworkSimulator {
    * Расчет метрик сети
    */
   calculateMetrics() {
-    const totalNodes = this.nodes.length;
+    // Считаем только узлы игрока (не static и не hub)
+    const playerNodes = this.nodes.filter(n => 
+      !n.isStatic && n.type !== 'hub'
+    );
+    const totalPlayerNodes = playerNodes.length;
     
-    if (totalNodes === 0) {
+    if (totalPlayerNodes === 0) {
       this.metrics = {
         coverage: 0,
         avgLatency: 0,
@@ -437,17 +441,17 @@ export class NetworkSimulator {
       return;
     }
     
-    // Подсчет подключенных узлов (имеющих хотя бы одно соединение)
-    let connectedNodes = 0;
-    for (const node of this.nodes) {
+    // Подсчет подключенных узлов игрока (имеющих хотя бы одно соединение)
+    let connectedPlayerNodes = 0;
+    for (const node of playerNodes) {
       if (node.connections.length > 0) {
-        connectedNodes++;
+        connectedPlayerNodes++;
       }
     }
     
-    // Стабильность = процент подключенных узлов
-    this.metrics.stability = totalNodes > 0 
-      ? (connectedNodes / totalNodes) * 100 
+    // Стабильность = процент подключенных узлов игрока
+    this.metrics.stability = totalPlayerNodes > 0 
+      ? (connectedPlayerNodes / totalPlayerNodes) * 100 
       : 100;
     
     // Покрытие (симуляция по площади)
@@ -459,42 +463,34 @@ export class NetworkSimulator {
 
   /**
    * Расчет покрытия территории
+   * Покрытие = доля точек (home), фактически подключённых к активной сети игрока (через цепочку к Хабу)
    */
   calculateCoverage() {
     if (this.nodes.length === 0) return 0;
     
-    // Упрощенный расчет: отношение покрытой площади к общей
-    // Для простоты используем эвристику на основе количества узлов и их радиусов
+    // Находим Хаб
+    const hub = this.nodes.find(n => n.type === 'hub');
+    if (!hub) return 0;
     
-    let totalCoveredArea = 0;
-    const samplePoints = [];
+    // Находим все узлы игрока (не static и не hub)
+    const playerNodes = this.nodes.filter(n => 
+      !n.isStatic && n.type !== 'hub' && n.type !== 'home' && n.type !== 'router'
+    );
     
-    // Генерация тестовых точек
-    const gridSize = 50;
-    const mapWidth = this.mapWidth || 1920;
-    const mapHeight = this.mapHeight || 1080;
+    // Находим всех пользователей (home)
+    const homeNodes = this.nodes.filter(n => n.type === 'home');
     
-    let coveredPoints = 0;
-    let totalPoints = 0;
+    if (homeNodes.length === 0) return 0;
     
-    for (let x = gridSize / 2; x < mapWidth; x += gridSize) {
-      for (let y = gridSize / 2; y < mapHeight; y += gridSize) {
-        totalPoints++;
-        
-        // Проверка покрытия точки любым узлом
-        for (const node of this.nodes) {
-          const effectiveRadius = node.radius;
-          const dist = Math.hypot(node.x - x, node.y - y);
-          
-          if (dist <= effectiveRadius) {
-            coveredPoints++;
-            break;
-          }
-        }
+    // Считаем сколько home подключено к Хабу
+    let connectedHomes = 0;
+    for (const home of homeNodes) {
+      if (this.isConnectedToHub(home, hub, playerNodes)) {
+        connectedHomes++;
       }
     }
     
-    return totalPoints > 0 ? (coveredPoints / totalPoints) * 100 : 0;
+    return (connectedHomes / homeNodes.length) * 100;
   }
 
   /**
