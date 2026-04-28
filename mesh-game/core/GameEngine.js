@@ -177,9 +177,14 @@ export class GameEngine {
     this.state.resources.influence += this.config.economy.baseIncome.influence * seconds;
     this.state.resources.data += this.config.economy.baseIncome.data * seconds;
     
-    // Доход от узлов
-    this.state.resources.influence += metrics.totalNodes * this.config.economy.incomePerNode.influence * seconds;
-    this.state.resources.data += metrics.totalNodes * this.config.economy.incomePerNode.data * seconds;
+    // Доход от каждого узла согласно его типу
+    for (const node of this.state.network.nodes) {
+      const nodeConfig = this.config.nodeTypes[node.type];
+      if (nodeConfig && nodeConfig.income) {
+        this.state.resources.influence += nodeConfig.income.influence * seconds;
+        this.state.resources.data += nodeConfig.income.data * seconds;
+      }
+    }
     
     // Доход от покрытия
     this.state.resources.influence += metrics.coverage * this.config.economy.incomePerCoverage.influence * seconds;
