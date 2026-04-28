@@ -1,6 +1,5 @@
 /**
  * Симулятор mesh-сети
- * Управляет узлами, соединениями и пакетами данных
  */
 import { Node } from '../entities/Node.js';
 import { Edge } from '../entities/Edge.js';
@@ -10,202 +9,201 @@ import { Pathfinding } from '../algorithms/Pathfinding.js';
 
 export class NetworkSimulator {
   constructor(config) {
-    this.nodes = [];           // Массив узлов
-    this.edges = [];           // Массив соединений
-    this.packets = [];         // Активные пакеты
-    
-    this.config = config;      // Параметры симуляции
+    this.nodes = [];
+    this.edges = [];
+    this.packets = [];
+    this.config = config;
     this.spatialHash = new SpatialHash(100);
     this.pathfinding = new Pathfinding(this);
     
-    this.nextNodeId = 0;
-    this.nextEdgeId = 0;
-    this.nextPacketId = 0;
+    this.nextNodeId = 1;
+    this.nextEdgeId = 1;
+    this.nextPacketId = 1;
     
-    // Целевые точки для расчета покрытия
-    this.targetPoints = this.generateTargetPoints(800, 600, 200);
-    
-    // Зоны помех
     this.jammerZones = [];
-    
-    // Препятствия
     this.obstacles = [];
     
-    // Статистика
-    this.stats = {
-      packetsSent: 0,
-      packetsDelivered: 0,
-      packetsDropped: 0,
-      totalLatency: 0
+    // Метрики
+    this.metrics = {
+      coverage: 0,
+      avgLatency: 0,
+      stability: 100,
+      totalPackets: 0,
+      deliveredPackets: 0
     };
+    
+    // Таймер ресурсов
+    this.resourceAccumulator = 0;
+    this.incomePerSecond = { influence: 0, data: 0 };
   }
 
   /**
-   * Генерация целевых точек для расчета покрытия
+   * Инициализация сети из конфигурации миссии
    */
-  generateTargetPoints(width, height, count) {
-    const points = [];
-    for (let i = 0; i < count; i++) {
-      points.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        covered: false
-      });
+  init(missionConfig) {
+    this.nodes = [];
+    this.edges = [];
+    this.packets = [];
+    this.nextNodeId = 1;
+    this.nextEdgeId = 1;
+    
+    this.obstacles = missionConfig.map?.obstacles || [];
+    this.jammerZones = missionConfig.map?.jammerZones || [];
+    
+    // Создание начальных узлов
+    if (missionConfig.initialNodes) {
+      for (const nodeData of missionConfig.initialNodes) {
+        this.addNode(nodeData.x, nodeData.y, nodeData.type);
+      }
     }
-    return points;
+    
+    // Первичный расчет соединений
+    this.updateConnections();
   }
 
   /**
-   * Добавление узла в сеть
-   * @param {number} x
-   * @param {number} y
-   * @param {string} type
-   * @param {object} typeConfig - Конфигурация типа узла
-   * @returns {Node}
+   * Добавление узла
    */
-  addNode(x, y, type, typeConfig) {
-    const node = new Node(this.nextNodeId++, x, y, type);
-    node.radius = typeConfig.radius;
-    node.capacity = typeConfig.capacity;
+  addNode(x, y, type = 'basic') {
+    const node = new Node(
+      `node_${this.nextNodeId++}`,
+      x,
+      y,
+      type,
+      this.config.nodeTypes
+    );
     
     this.nodes.push(node);
-    this.spatialHash.insert(node);
-    
-    // Автоматическое соединение с соседями
-    this.updateConnectionsForNode(node);
+    this.updateConnections();
     
     return node;
   }
 
   /**
-   * Удаление узла из сети
-   * @param {string|number} nodeId
+   * Удаление узла
    */
   removeNode(nodeId) {
     const index = this.nodes.findIndex(n => n.id === nodeId);
-    if (index === -1) return;
+    if (index === -1) return false;
     
     const node = this.nodes[index];
     
-    // Удаляем все соединения этого узла
-    this.edges = this.edges.filter(e => 
-      e.nodeA !== node && e.nodeB !== node
+    // Удаление связанных ребер
+    this.edges = this.edges.filter(edge => 
+      edge.nodeA.id !== nodeId && edge.nodeB.id !== nodeId
     );
     
-    // Обновляем соединения у соседей
+    // Обновление соединений у соседей
     for (const otherNode of this.nodes) {
       otherNode.connections = otherNode.connections.filter(id => id !== nodeId);
     }
     
-    // Удаляем из массива и хеша
+    // Удаление узла
     this.nodes.splice(index, 1);
-    this.spatialHash.remove(node);
+    this.updateConnections();
+    
+    return true;
   }
 
   /**
-   * Обновление соединений для узла
-   * @param {Node} node
+   * Получение узла по ID
    */
-  updateConnectionsForNode(node) {
-    const neighbors = this.spatialHash.queryRange(
-      node.x, 
-      node.y, 
-      node.getEffectiveRadius(),
-      node
+  getNodeById(id) {
+    return this.nodes.find(n => n.id === id);
+  }
+
+  /**
+   * Получение ребра между узлами
+   */
+  getEdgeBetween(nodeAId, nodeBId) {
+    return this.edges.find(edge => 
+      (edge.nodeA.id === nodeAId && edge.nodeB.id === nodeBId) ||
+      (edge.nodeA.id === nodeBId && edge.nodeB.id === nodeAId)
     );
+  }
+
+  /**
+   * Обновление соединений между узлами
+   */
+  updateConnections() {
+    // Очистка старых ребер
+    this.edges = [];
+    this.nextEdgeId = 1;
     
-    for (const neighbor of neighbors) {
-      // Проверяем взаимную возможность соединения
-      if (node.canConnectTo(neighbor) && neighbor.canConnectTo(node)) {
-        // Проверяем, существует ли уже соединение
-        const existingEdge = this.getEdgeBetween(node, neighbor);
+    // Очистка соединений у узлов
+    for (const node of this.nodes) {
+      node.connections = [];
+    }
+    
+    // Поиск и создание новых соединений
+    const connectedPairs = new Set();
+    
+    for (const node of this.nodes) {
+      // Эффективный радиус с учетом помех
+      const effectiveRadius = node.update(0, this, this.jammerZones);
+      
+      // Поиск соседей в радиусе
+      const neighbors = this.spatialHash.queryRange(node.x, node.y, effectiveRadius);
+      
+      for (const neighbor of neighbors) {
+        if (neighbor.id === node.id) continue;
         
-        if (!existingEdge) {
-          // Создаем новое соединение
-          const edge = new Edge(this.nextEdgeId++, node, neighbor);
-          this.edges.push(edge);
+        // Проверка взаимного покрытия
+        const distance = node.getDistanceTo(neighbor);
+        const neighborEffectiveRadius = neighbor.update(0, this, this.jammerZones);
+        
+        if (distance <= effectiveRadius && distance <= neighborEffectiveRadius) {
+          const pairKey = [node.id, neighbor.id].sort().join('-');
           
-          // Добавляем ID соединения в узлы
-          node.connections.push(neighbor.id);
-          neighbor.connections.push(node.id);
+          if (!connectedPairs.has(pairKey)) {
+            connectedPairs.add(pairKey);
+            
+            // Создание ребра
+            const edge = new Edge(`edge_${this.nextEdgeId++}`, node, neighbor);
+            this.edges.push(edge);
+            
+            // Добавление соединения у узлов
+            node.connections.push(neighbor.id);
+            neighbor.connections.push(node.id);
+          }
         }
       }
     }
   }
 
   /**
-   * Обновление всех соединений в сети
+   * Отправка пакета данных
    */
-  updateConnections() {
-    // Очищаем старые соединения
-    for (const node of this.nodes) {
-      node.connections = [];
-    }
-    this.edges = [];
-    this.nextEdgeId = 0;
-    
-    // Перестраиваем spatial hash
-    this.spatialHash.rebuild(this.nodes);
-    
-    // Создаем новые соединения
-    for (const node of this.nodes) {
-      this.updateConnectionsForNode(node);
-    }
-  }
-
-  /**
-   * Получение соединения между двумя узлами
-   * @param {Node} nodeA
-   * @param {Node} nodeB
-   * @returns {Edge|null}
-   */
-  getEdgeBetween(nodeA, nodeB) {
-    return this.edges.find(e => 
-      (e.nodeA === nodeA && e.nodeB === nodeB) ||
-      (e.nodeA === nodeB && e.nodeB === nodeA)
-    );
-  }
-
-  /**
-   * Отправка пакета от одного узла к другому
-   * @param {string} fromId
-   * @param {string} toId
-   * @returns {Packet|null}
-   */
-  routePacket(fromId, toId) {
+  sendPacket(fromId, toId) {
     const path = this.pathfinding.findPath(fromId, toId);
     
     if (!path || path.length < 2) {
-      this.stats.packetsDropped++;
       return null;
     }
     
-    const fromNode = this.nodes.find(n => n.id === fromId);
-    const toNode = this.nodes.find(n => n.id === toId);
+    const packet = new Packet(
+      `packet_${this.nextPacketId++}`,
+      fromId,
+      toId,
+      path
+    );
     
-    if (!fromNode || !toNode) return null;
-    
-    const packet = new Packet(this.nextPacketId++, fromNode, toNode, path);
     this.packets.push(packet);
-    this.stats.packetsSent++;
+    this.metrics.totalPackets++;
     
     return packet;
   }
 
   /**
    * Один шаг симуляции
-   * @param {number} deltaTime - Время в мс
    */
-  simulateTick(deltaTime) {
+  update(deltaTime) {
     // Обновление узлов
     for (const node of this.nodes) {
-      const typeConfig = this.config.nodeTypes[node.type];
-      if (typeConfig) {
-        node.update(deltaTime, typeConfig);
-      }
+      node.update(deltaTime, this, this.jammerZones);
     }
     
-    // Обновление соединений
+    // Обновление ребер
     for (const edge of this.edges) {
       edge.update(deltaTime);
     }
@@ -213,179 +211,204 @@ export class NetworkSimulator {
     // Обновление пакетов
     for (let i = this.packets.length - 1; i >= 0; i--) {
       const packet = this.packets[i];
-      const active = packet.update(deltaTime);
+      packet.update(deltaTime, this);
       
-      if (!active) {
-        // Пакет достиг цели или потерян
-        if (packet.delivered) {
-          this.stats.packetsDelivered++;
-          this.stats.totalLatency += Date.now() - packet.birthTime;
-        } else if (packet.dropped) {
-          this.stats.packetsDropped++;
-        }
-        
+      if (packet.completed) {
         this.packets.splice(i, 1);
+        this.metrics.deliveredPackets++;
       }
     }
     
-    // Обновление покрытия целевых точек
-    this.updateCoverage();
+    // Накопление ресурсов (каждую секунду)
+    this.resourceAccumulator += deltaTime;
+    if (this.resourceAccumulator >= 1.0) {
+      this.calculateIncome();
+      this.resourceAccumulator -= 1.0;
+    }
     
-    // Сброс нагрузки на узлах (постепенный)
+    // Пересчет метрик
+    this.calculateMetrics();
+  }
+
+  /**
+   * Расчет дохода от узлов
+   */
+  calculateIncome() {
+    let totalInfluence = 0;
+    let totalData = 0;
+    
     for (const node of this.nodes) {
-      node.resetLoad();
-    }
-  }
-
-  /**
-   * Обновление статуса покрытия целевых точек
-   */
-  updateCoverage() {
-    for (const point of this.targetPoints) {
-      point.covered = false;
-      
-      for (const node of this.nodes) {
-        if (node.status === 'offline') continue;
-        
-        const dx = node.x - point.x;
-        const dy = node.y - point.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance <= node.getEffectiveRadius()) {
-          point.covered = true;
-          break;
-        }
+      // Узел дает доход только если подключен к сети (имеет соединения)
+      if (node.connections.length > 0 || this.nodes.length === 1) {
+        totalInfluence += node.income.influence;
+        totalData += node.income.data;
       }
     }
+    
+    this.incomePerSecond = {
+      influence: totalInfluence,
+      data: totalData
+    };
+    
+    return this.incomePerSecond;
   }
 
   /**
-   * Расчет процента покрытия
-   * @returns {number}
+   * Получение текущего дохода
    */
-  getCoverage() {
-    if (this.targetPoints.length === 0) return 0;
-    
-    const covered = this.targetPoints.filter(p => p.covered).length;
-    return (covered / this.targetPoints.length) * 100;
+  getIncome() {
+    return this.incomePerSecond;
   }
 
   /**
-   * Получение метрик сети
-   * @returns {object}
+   * Расчет метрик сети
    */
-  getMetrics() {
-    const activeNodes = this.nodes.filter(n => n.status === 'active').length;
-    const overloadedNodes = this.nodes.filter(n => n.status === 'overloaded').length;
-    const offlineNodes = this.nodes.filter(n => n.status === 'offline').length;
+  calculateMetrics() {
+    const totalNodes = this.nodes.length;
     
-    // Средняя задержка
-    let avgLatency = 0;
-    if (this.edges.length > 0) {
-      const totalLatency = this.edges.reduce((sum, e) => sum + e.latency, 0);
-      avgLatency = totalLatency / this.edges.length;
+    if (totalNodes === 0) {
+      this.metrics = {
+        coverage: 0,
+        avgLatency: 0,
+        stability: 100,
+        totalPackets: this.metrics.totalPackets,
+        deliveredPackets: this.metrics.deliveredPackets
+      };
+      return;
     }
     
-    // Стабильность (процент активных узлов)
-    const stability = this.nodes.length > 0 
-      ? (activeNodes / this.nodes.length) * 100 
-      : 0;
+    // Подсчет подключенных узлов (имеющих хотя бы одно соединение)
+    let connectedNodes = 0;
+    for (const node of this.nodes) {
+      if (node.connections.length > 0) {
+        connectedNodes++;
+      }
+    }
     
-    // Коэффициент доставки пакетов
-    const deliveryRate = this.stats.packetsSent > 0
-      ? (this.stats.packetsDelivered / this.stats.packetsSent) * 100
+    // Стабильность = процент подключенных узлов
+    this.metrics.stability = totalNodes > 0 
+      ? (connectedNodes / totalNodes) * 100 
       : 100;
     
-    return {
-      totalNodes: this.nodes.length,
-      activeNodes,
-      overloadedNodes,
-      offlineNodes,
-      totalEdges: this.edges.length,
-      activePackets: this.packets.length,
-      coverage: this.getCoverage(),
-      avgLatency: Math.round(avgLatency),
-      stability: Math.round(stability),
-      deliveryRate: Math.round(deliveryRate),
-      packetsSent: this.stats.packetsSent,
-      packetsDelivered: this.stats.packetsDelivered,
-      packetsDropped: this.stats.packetsDropped
-    };
+    // Покрытие (симуляция по площади)
+    this.metrics.coverage = this.calculateCoverage();
+    
+    // Средняя задержка (на основе количества хопов)
+    this.metrics.avgLatency = this.calculateAverageLatency();
   }
 
   /**
-   * Проверка влияния зон помех на узлы
-   * @param {number} deltaTime
+   * Расчет покрытия территории
    */
-  updateJammerZones(deltaTime) {
-    for (const zone of this.jammerZones) {
-      for (const node of this.nodes) {
-        const dx = node.x - zone.x;
-        const dy = node.y - zone.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+  calculateCoverage() {
+    if (this.nodes.length === 0) return 0;
+    
+    // Упрощенный расчет: отношение покрытой площади к общей
+    // Для простоты используем эвристику на основе количества узлов и их радиусов
+    
+    let totalCoveredArea = 0;
+    const samplePoints = [];
+    
+    // Генерация тестовых точек
+    const gridSize = 50;
+    const mapWidth = 1000;
+    const mapHeight = 800;
+    
+    let coveredPoints = 0;
+    let totalPoints = 0;
+    
+    for (let x = gridSize / 2; x < mapWidth; x += gridSize) {
+      for (let y = gridSize / 2; y < mapHeight; y += gridSize) {
+        totalPoints++;
         
-        if (distance <= zone.radius) {
-          // Узел в зоне помех - снижаем радиус действия
-          node.addLoad(0.01 * (deltaTime / 16));
+        // Проверка покрытия точки любым узлом
+        for (const node of this.nodes) {
+          const effectiveRadius = node.radius;
+          const dist = Math.hypot(node.x - x, node.y - y);
+          
+          if (dist <= effectiveRadius) {
+            coveredPoints++;
+            break;
+          }
         }
       }
     }
+    
+    return totalPoints > 0 ? (coveredPoints / totalPoints) * 100 : 0;
   }
 
   /**
-   * Сериализация сети для сохранения
-   * @returns {object}
+   * Расчет средней задержки
    */
-  serialize() {
+  calculateAverageLatency() {
+    if (this.nodes.length < 2) return 0;
+    
+    let totalLatency = 0;
+    let pathCount = 0;
+    
+    // Выборка путей между случайными парами узлов
+    const sampleSize = Math.min(10, this.nodes.length);
+    
+    for (let i = 0; i < sampleSize; i++) {
+      for (let j = i + 1; j < sampleSize; j++) {
+        const path = this.pathfinding.findPath(
+          this.nodes[i].id,
+          this.nodes[j].id
+        );
+        
+        if (path && path.length > 1) {
+          // Задержка = базовая + нагрузка на каждом узле
+          let latency = 10; // Базовая задержка
+          for (const nodeId of path) {
+            const node = this.getNodeById(nodeId);
+            if (node) {
+              latency += (node.load / node.capacity) * 50;
+            }
+          }
+          
+          totalLatency += latency;
+          pathCount++;
+        }
+      }
+    }
+    
+    return pathCount > 0 ? totalLatency / pathCount : 0;
+  }
+
+  /**
+   * Получение текущих метрик
+   */
+  getMetrics() {
+    return { ...this.metrics };
+  }
+
+  /**
+   * Серийнаялизация для сохранения
+   */
+  toJSON() {
     return {
-      nodes: this.nodes.map(n => n.serialize()),
-      edges: this.edges.map(e => e.serialize()),
-      stats: {...this.stats},
+      nodes: this.nodes.map(n => n.toJSON()),
+      edges: this.edges.map(e => e.toJSON()),
       nextNodeId: this.nextNodeId,
       nextEdgeId: this.nextEdgeId,
-      nextPacketId: this.nextPacketId
+      metrics: { ...this.metrics }
     };
   }
 
   /**
-   * Десериализация сети из сохраненных данных
-   * @param {object} data
-   * @param {object} config
+   * Десериализация
    */
-  static deserialize(data, config) {
-    const network = new NetworkSimulator(config);
+  static fromJSON(data, config) {
+    const simulator = new NetworkSimulator(config);
     
-    // Восстанавливаем узлы
-    const nodesMap = new Map();
-    for (const nodeData of data.nodes) {
-      const typeConfig = config.nodeTypes[nodeData.type];
-      const node = Node.deserialize(
-        nodeData, 
-        nodeData.type, 
-        typeConfig.radius, 
-        typeConfig.capacity
-      );
-      network.nodes.push(node);
-      nodesMap.set(node.id, node);
-    }
+    // Восстановление узлов
+    simulator.nodes = data.nodes.map(n => Node.fromJSON(n, config.nodeTypes));
+    simulator.nextNodeId = data.nextNodeId;
+    simulator.nextEdgeId = data.nextEdgeId;
     
-    // Восстанавливаем соединения
-    for (const edgeData of data.edges) {
-      const edge = Edge.deserialize(edgeData, nodesMap);
-      if (edge) {
-        network.edges.push(edge);
-      }
-    }
+    // Пересчет соединений
+    simulator.updateConnections();
     
-    // Восстанавливаем счетчики
-    network.nextNodeId = data.nextNodeId;
-    network.nextEdgeId = data.nextEdgeId;
-    network.nextPacketId = data.nextPacketId;
-    network.stats = data.stats;
-    
-    // Перестраиваем spatial hash
-    network.spatialHash.rebuild(network.nodes);
-    
-    return network;
+    return simulator;
   }
 }

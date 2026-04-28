@@ -1,153 +1,114 @@
 /**
  * Класс узла сети
- * Представляет отдельный узел в mesh-сети (телефон, роутер, кэш и т.д.)
  */
 export class Node {
-  constructor(id, x, y, type) {
+  constructor(id, x, y, type, config) {
     this.id = id;
     this.x = x;
     this.y = y;
     this.type = type;
+    this.config = config[type] || config.basic;
     
-    // Параметры узла (будут установлены из конфига)
-    this.radius = 50;           // Радиус действия
-    this.capacity = 50;         // Пропускная способность Mbps
-    this.load = 0;              // Текущая нагрузка (0-1)
-    this.energy = 100;          // Энергия %
-    this.status = 'active';     // active, overloaded, offline
-    this.connections = [];      // ID соседних узлов
+    // Параметры из конфига
+    this.radius = this.config.radius;
+    this.capacity = this.config.capacity;
+    this.income = this.config.income;
     
-    // Апгрейды
-    this.upgrades = {
-      range: 0,
-      capacity: 0,
-      efficiency: 0
-    };
+    // Состояние
+    this.load = 0;       // Текущая нагрузка %
+    this.energy = 100;   // Энергия %
+    this.status = 'active'; // active, overloaded, offline, isolated
+    this.connections = []; // ID соседних узлов
     
-    // Визуальные параметры
-    this.selected = false;
+    // Визуализация
     this.hovered = false;
-    this.pulse = 0;             // Для анимации
+    this.selected = false;
+    this.pulse = 0;
   }
 
   /**
    * Обновление состояния узла
-   * @param {number} deltaTime - Время с последнего кадра (мс)
-   * @param {object} config - Конфигурация типа узла
    */
-  update(deltaTime, config) {
-    // Восстановление энергии
-    if (this.energy < 100 && this.status !== 'offline') {
-      this.energy += config.energyConsumption * 0.01 * (deltaTime / 16);
-      if (this.energy > 100) this.energy = 100;
-    }
-    
-    // Проверка перегрузки
-    const overloadThreshold = 0.9;
-    if (this.load > overloadThreshold) {
+  update(deltaTime, network, jammerZones) {
+    // Проверка на изоляцию (нет соединений)
+    const isConnected = this.connections.length > 0;
+    if (!isConnected && network.nodes.length > 1) {
+      this.status = 'isolated';
+    } else if (this.load > 90) {
       this.status = 'overloaded';
-    } else if (this.energy <= 0) {
-      this.status = 'offline';
     } else {
       this.status = 'active';
     }
-    
-    // Анимация пульсации
-    if (this.hovered || this.selected) {
-      this.pulse += 0.05;
-    } else {
-      this.pulse = 0;
+
+    // Проверка зон помех
+    let effectiveRadius = this.radius;
+    if (jammerZones && jammerZones.length > 0) {
+      for (let zone of jammerZones) {
+        const dist = Math.hypot(this.x - zone.x, this.y - zone.y);
+        if (dist < zone.radius) {
+          const strength = 1 - (dist / zone.radius) * zone.strength;
+          effectiveRadius *= (1 - zone.strength * strength);
+        }
+      }
     }
+    
+    return effectiveRadius;
   }
 
   /**
    * Проверка возможности соединения с другим узлом
-   * @param {Node} otherNode - Другой узел
-   * @returns {boolean}
    */
-  canConnectTo(otherNode) {
-    if (otherNode === this) return false;
-    if (this.status === 'offline' || otherNode.status === 'offline') return false;
-    
+  canConnectTo(otherNode, effectiveRadius = null) {
+    const radius = effectiveRadius !== null ? effectiveRadius : this.radius;
     const distance = this.getDistanceTo(otherNode);
-    const effectiveRadius = this.getEffectiveRadius();
-    
-    return distance <= effectiveRadius;
+    return distance <= radius && distance <= otherNode.radius;
   }
 
   /**
    * Расчет расстояния до другого узла
-   * @param {Node} otherNode
-   * @returns {number}
    */
   getDistanceTo(otherNode) {
-    const dx = this.x - otherNode.x;
-    const dy = this.y - otherNode.y;
-    return Math.sqrt(dx * dx + dy * dy);
+    return Math.hypot(this.x - otherNode.x, this.y - otherNode.y);
   }
 
   /**
-   * Получение эффективного радиуса с учетом апгрейдов
-   * @returns {number}
+   * Получение цвета статуса
    */
-  getEffectiveRadius() {
-    return this.radius * (1 + this.upgrades.range * 0.2);
+  getStatusColor() {
+    switch (this.status) {
+      case 'active': return '#00ff88';
+      case 'overloaded': return '#ffaa00';
+      case 'offline': return '#ff4444';
+      case 'isolated': return '#888888';
+      default: return '#00ff88';
+    }
   }
 
   /**
-   * Получение эффективной пропускной способности
-   * @returns {number}
+   * Серийнаялизация для сохранения
    */
-  getEffectiveCapacity() {
-    return this.capacity * (1 + this.upgrades.capacity * 0.3);
-  }
-
-  /**
-   * Добавление нагрузки на узел
-   * @param {number} amount - Количество нагрузки (0-1)
-   */
-  addLoad(amount) {
-    this.load = Math.min(1, this.load + amount);
-  }
-
-  /**
-   * Сброс нагрузки
-   */
-  resetLoad() {
-    this.load = Math.max(0, this.load - 0.1);
-  }
-
-  /**
-   * Сериализация узла для сохранения
-   * @returns {object}
-   */
-  serialize() {
+  toJSON() {
     return {
       id: this.id,
       x: this.x,
       y: this.y,
       type: this.type,
+      load: this.load,
       energy: this.energy,
-      upgrades: {...this.upgrades},
+      status: this.status,
       connections: [...this.connections]
     };
   }
 
   /**
-   * Десериализация узла из сохраненных данных
-   * @param {object} data
-   * @param {string} type
-   * @param {number} radius
-   * @param {number} capacity
-   * @returns {Node}
+   * Десериализация
    */
-  static deserialize(data, type, radius, capacity) {
-    const node = new Node(data.id, data.x, data.y, type);
+  static fromJSON(data, config) {
+    const node = new Node(data.id, data.x, data.y, data.type, config);
+    node.load = data.load;
     node.energy = data.energy;
-    node.upgrades = data.upgrades || {};
-    node.connections = data.connections || [];
-    node.radius = radius;
-    node.capacity = capacity;
+    node.status = data.status;
+    node.connections = data.connections;
     return node;
   }
 }
