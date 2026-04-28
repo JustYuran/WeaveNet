@@ -56,6 +56,23 @@ export class Node {
   }
 
   /**
+   * Получение эффективного радиуса с учетом помех
+   */
+  getEffectiveRadius(jammerZones) {
+    let effectiveRadius = this.radius;
+    if (jammerZones && jammerZones.length > 0) {
+      for (let zone of jammerZones) {
+        const dist = Math.hypot(this.x - zone.x, this.y - zone.y);
+        if (dist < zone.radius) {
+          const strength = 1 - (dist / zone.radius) * zone.strength;
+          effectiveRadius *= (1 - zone.strength * strength);
+        }
+      }
+    }
+    return effectiveRadius;
+  }
+
+  /**
    * Проверка возможности соединения с другим узлом
    */
   canConnectTo(otherNode, effectiveRadius = null) {
