@@ -1,0 +1,68 @@
+{
+  "nodeTypes": {
+    "basic": {
+      "name": "Basic",
+      "icon": "📱",
+      "cost": {"influence": 10, "data": 0},
+      "radius": 50,
+      "capacity": 50,
+      "energyConsumption": 1,
+      "color": "#00ff88"
+    },
+    "relay": {
+      "name": "Relay",
+      "icon": "📶",
+      "cost": {"influence": 30, "data": 20},
+      "radius": 150,
+      "capacity": 200,
+      "energyConsumption": 5,
+      "color": "#00ccff"
+    },
+    "cache": {
+      "name": "Cache",
+      "icon": "💾",
+      "cost": {"influence": 25, "data": 15},
+      "radius": 80,
+      "capacity": 100,
+      "energyConsumption": 3,
+      "color": "#ffaa00"
+    },
+    "stealth": {
+      "name": "Stealth",
+      "icon": "👻",
+      "cost": {"influence": 20, "data": 10},
+      "radius": 75,
+      "capacity": 30,
+      "energyConsumption": 2,
+      "color": "#aa00ff"
+    }
+  },
+  "simulation": {
+    "tickRate": 1000,
+    "packetSpeed": 100,
+    "latencyBase": 10,
+    "maxLatency": 500,
+    "connectionMinStrength": 0.3,
+    "energyRegenRate": 0.5,
+    "overloadThreshold": 0.9,
+    "criticalLoadThreshold": 0.7
+  },
+  "coverage": {
+    "targetPoints": 200,
+    "pointCheckInterval": 2000
+  },
+  "economy": {
+    "baseIncome": {
+      "influence": 1,
+      "data": 0.5
+    },
+    "incomePerNode": {
+      "influence": 0.1,
+      "data": 0.2
+    },
+    "incomePerCoverage": {
+      "influence": 0.01,
+      "data": 0.02
+    }
+  }
+}

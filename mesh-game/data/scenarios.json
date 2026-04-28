@@ -1,0 +1,97 @@
+{
+  "mission1": {
+    "id": "mission1",
+    "name": "Первый узел",
+    "description": "Постройте базовую mesh-сеть для покрытия территории",
+    "map": {
+      "width": 800,
+      "height": 600,
+      "obstacles": [
+        {"x": 300, "y": 250, "radius": 40},
+        {"x": 500, "y": 350, "radius": 50}
+      ],
+      "jammerZones": []
+    },
+    "initialNodes": [
+      {"x": 100, "y": 100, "type": "basic"}
+    ],
+    "objectives": {
+      "coverage": 50,
+      "maxLatency": 200,
+      "minStability": 80,
+      "timeLimit": null
+    },
+    "resources": {
+      "influence": 100,
+      "data": 50
+    },
+    "events": []
+  },
+  "mission2": {
+    "id": "mission2",
+    "name": "Расширение сети",
+    "description": "Увеличьте покрытие до 75% и обеспечьте стабильность",
+    "map": {
+      "width": 800,
+      "height": 600,
+      "obstacles": [
+        {"x": 200, "y": 300, "radius": 60},
+        {"x": 600, "y": 200, "radius": 50},
+        {"x": 400, "y": 450, "radius": 40}
+      ],
+      "jammerZones": [
+        {"x": 350, "y": 300, "radius": 80}
+      ]
+    },
+    "initialNodes": [
+      {"x": 100, "y": 100, "type": "basic"},
+      {"x": 700, "y": 500, "type": "basic"}
+    ],
+    "objectives": {
+      "coverage": 75,
+      "maxLatency": 150,
+      "minStability": 85,
+      "timeLimit": 600
+    },
+    "resources": {
+      "influence": 150,
+      "data": 100
+    },
+    "events": [
+      {"type": "jammer", "time": 120, "duration": 60, "position": {"x": 350, "y": 300, "radius": 80}}
+    ]
+  },
+  "mission3": {
+    "id": "mission3",
+    "name": "Устойчивая сеть",
+    "description": "Постройте отказоустойчивую сеть с резервными путями",
+    "map": {
+      "width": 800,
+      "height": 600,
+      "obstacles": [
+        {"x": 150, "y": 200, "radius": 50},
+        {"x": 650, "y": 400, "radius": 50},
+        {"x": 400, "y": 300, "radius": 70}
+      ],
+      "jammerZones": []
+    },
+    "initialNodes": [
+      {"x": 80, "y": 80, "type": "basic"},
+      {"x": 720, "y": 520, "type": "relay"}
+    ],
+    "objectives": {
+      "coverage": 85,
+      "maxLatency": 100,
+      "minStability": 90,
+      "timeLimit": 900
+    },
+    "resources": {
+      "influence": 200,
+      "data": 150
+    },
+    "events": [
+      {"type": "storm", "time": 180, "duration": 90},
+      {"type": "surge", "time": 300, "duration": 45}
+    ]
+  }
+}
