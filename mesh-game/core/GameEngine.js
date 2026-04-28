@@ -177,6 +177,77 @@ export class GameEngine {
     
     // Восстановление контекста
     this.ctx.restore();
+    
+    // Отрисовка тепловых карт в зависимости от режима вида
+    this.renderViewOverlay();
+  }
+
+  /**
+   * Отрисовка overlay для режимов вида (покрытие, нагрузка)
+   */
+  renderViewOverlay() {
+    const viewMode = this.state.viewMode || 'default';
+    
+    if (viewMode === 'coverage') {
+      this.renderCoverageOverlay();
+    } else if (viewMode === 'load') {
+      this.renderLoadOverlay();
+    }
+  }
+
+  /**
+   * Отрисовка overlay покрытия
+   */
+  renderCoverageOverlay() {
+    for (const node of this.state.network.nodes) {
+      // Зеленая зона покрытия
+      const gradient = this.ctx.createRadialGradient(
+        node.x, node.y, 0,
+        node.x, node.y, node.radius
+      );
+      gradient.addColorStop(0, 'rgba(0, 255, 136, 0.2)');
+      gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+      
+      // Граница радиуса
+      this.ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
+      this.ctx.setLineDash([5, 5]);
+      this.ctx.lineWidth = 1;
+      this.ctx.beginPath();
+      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
+    }
+  }
+
+  /**
+   * Отрисовка overlay нагрузки
+   */
+  renderLoadOverlay() {
+    for (const node of this.state.network.nodes) {
+      const loadRatio = node.load / 100;
+      
+      // Цвет от зеленого (0%) к красному (100%)
+      const r = Math.floor(255 * loadRatio);
+      const g = Math.floor(255 * (1 - loadRatio));
+      const color = `rgba(${r}, ${g}, 0, 0.3)`;
+      
+      const gradient = this.ctx.createRadialGradient(
+        node.x, node.y, 0,
+        node.x, node.y, node.radius
+      );
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'transparent');
+      
+      this.ctx.fillStyle = gradient;
+      this.ctx.beginPath();
+      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+      this.ctx.fill();
+    }
   }
 
   /**
@@ -576,5 +647,12 @@ export class GameEngine {
   reset() {
     localStorage.removeItem('weavenet_save');
     location.reload();
+  }
+
+  /**
+   * Установка режима отображения
+   */
+  setViewMode(mode) {
+    this.state.viewMode = mode;
   }
 }
