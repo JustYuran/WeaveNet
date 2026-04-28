@@ -7,10 +7,31 @@
       "width": 1000,
       "height": 800,
       "obstacles": [],
-      "jammerZones": []
+      "jammerZones": [],
+      "homeNodes": [
+        {
+          "x": 500,
+          "y": 400,
+          "type": "user_home"
+        },
+        {
+          "x": 800,
+          "y": 200,
+          "type": "user_home"
+        },
+        {
+          "x": 700,
+          "y": 600,
+          "type": "user_home"
+        }
+      ]
     },
     "initialNodes": [
-      {"x": 200, "y": 400, "type": "basic"}
+      {
+        "x": 200,
+        "y": 400,
+        "type": "basic"
+      }
     ],
     "objectives": {
       "coverage": 30,
@@ -40,13 +61,25 @@
       "width": 1200,
       "height": 900,
       "obstacles": [
-        {"x": 600, "y": 450, "radius": 100}
+        {
+          "x": 600,
+          "y": 450,
+          "radius": 100
+        }
       ],
       "jammerZones": []
     },
     "initialNodes": [
-      {"x": 150, "y": 200, "type": "basic"},
-      {"x": 150, "y": 700, "type": "basic"}
+      {
+        "x": 150,
+        "y": 200,
+        "type": "basic"
+      },
+      {
+        "x": 150,
+        "y": 700,
+        "type": "basic"
+      }
     ],
     "objectives": {
       "coverage": 60,
@@ -60,7 +93,11 @@
       "data": 50
     },
     "events": [
-      {"type": "surge", "time": 60, "duration": 30}
+      {
+        "type": "surge",
+        "time": 60,
+        "duration": 30
+      }
     ],
     "tutorial": [
       "Миссия 2: Расширение сети",
@@ -79,11 +116,20 @@
       "height": 1000,
       "obstacles": [],
       "jammerZones": [
-        {"x": 700, "y": 500, "radius": 200, "strength": 0.5}
+        {
+          "x": 700,
+          "y": 500,
+          "radius": 200,
+          "strength": 0.5
+        }
       ]
     },
     "initialNodes": [
-      {"x": 200, "y": 500, "type": "relay"}
+      {
+        "x": 200,
+        "y": 500,
+        "type": "relay"
+      }
     ],
     "objectives": {
       "coverage": 50,
@@ -97,7 +143,15 @@
       "data": 100
     },
     "events": [
-      {"type": "jammer", "time": 30, "duration": 120, "position": {"x": 700, "y": 500}}
+      {
+        "type": "jammer",
+        "time": 30,
+        "duration": 120,
+        "position": {
+          "x": 700,
+          "y": 500
+        }
+      }
     ],
     "tutorial": [
       "Миссия 3: Зона помех",
