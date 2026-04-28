@@ -20,7 +20,9 @@ export class Edge {
    */
   update(deltaTime) {
     // Расчет силы связи на основе расстояния
-    const distance = nodeADistanceTo(this.nodeB);
+    const dx = this.nodeA.x - this.nodeB.x;
+    const dy = this.nodeA.y - this.nodeB.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
     const maxDistance = Math.min(
       this.nodeA.getEffectiveRadius(),
       this.nodeB.getEffectiveRadius()
@@ -125,11 +127,4 @@ export class Edge {
     edge.load = data.load;
     return edge;
   }
-}
-
-// Вспомогательная функция для расчета расстояния
-function nodeADistanceTo(nodeB) {
-  const dx = nodeA.x - nodeB.x;
-  const dy = nodeA.y - nodeB.y;
-  return Math.sqrt(dx * dx + dy * dy);
 }
