@@ -102,19 +102,18 @@ export class GameEngine {
     if (this.state.network) {
       this.state.network.update(deltaTime);
       
-      // Регенерация энергии
-      const energyRegen = (this.config?.resources?.energy?.regenRate || 10) * deltaTime;
-      this.state.resources.energy += energyRegen;
+      // Получение дохода от узлов (influence и data)
+      const income = this.state.network.getIncome();
       
-      // Получение информации от подключенных пользователей
-      const infoGain = this.state.network.calculateInfoGain();
-      this.state.resources.info += infoGain * deltaTime;
+      // Начисление ресурсов
+      this.state.resources.influence = (this.state.resources.influence || 0) + (income.influence || 0) * deltaTime;
+      this.state.resources.data = (this.state.resources.data || 0) + (income.data || 0) * deltaTime;
       
       // Уведомление UI об обновлении ресурсов (каждые 0.1 сек)
       if (this.onResourceUpdate) {
         this.onResourceUpdate({
           resources: { ...this.state.resources },
-          income: { energy: energyRegen, info: infoGain }
+          income: { influence: income.influence || 0, data: income.data || 0 }
         });
       }
       
@@ -343,59 +342,70 @@ export class GameEngine {
   }
 
   /**
-   * Отрисовка карты мира (фон)
+   * Отрисовка карты мира (фон) - кэшируется для производительности
    */
   renderWorldMap() {
-    const mapWidth = this.state.network.mapWidth || 1920;
-    const mapHeight = this.state.network.mapHeight || 1080;
+    const mapWidth = this.state.network.mapWidth || 1000;
+    const mapHeight = this.state.network.mapHeight || 1000;
     
-    // Процедурная отрисовка местности
-    const gridSize = 20;
-    
-    for (let x = 0; x < mapWidth; x += gridSize) {
-      for (let y = 0; y < mapHeight; y += gridSize) {
-        const terrain = this.state.network.getTerrainInfo(x, y);
-        
-        let color;
-        switch (terrain.type) {
-          case 'mountain':
-            color = 'rgba(90, 74, 58, 0.6)';
-            break;
-          case 'water':
-            color = 'rgba(26, 58, 90, 0.8)';
-            break;
-          default: // plain
-            color = 'rgba(45, 74, 45, 0.4)';
+    // Используем кэшированный оффскрин канвас для карты
+    if (!this.worldMapCache) {
+      this.worldMapCache = document.createElement('canvas');
+      this.worldMapCache.width = mapWidth;
+      this.worldMapCache.height = mapHeight;
+      const cacheCtx = this.worldMapCache.getContext('2d');
+      
+      // Процедурная отрисовка местности из тайлов
+      const tileSize = 5; // 5 пикселей = 1 метр
+      
+      for (let x = 0; x < mapWidth; x += tileSize) {
+        for (let y = 0; y < mapHeight; y += tileSize) {
+          const terrain = this.state.network.getTerrainInfo(x, y);
+          
+          let color;
+          switch (terrain.type) {
+            case 'mountain':
+              color = 'rgba(90, 74, 58, 0.8)';
+              break;
+            case 'water':
+              color = 'rgba(26, 58, 90, 0.9)';
+              break;
+            default: // plain
+              color = 'rgba(45, 74, 45, 0.6)';
+          }
+          
+          cacheCtx.fillStyle = color;
+          cacheCtx.fillRect(x, y, tileSize, tileSize);
         }
-        
-        this.ctx.fillStyle = color;
-        this.ctx.fillRect(x, y, gridSize, gridSize);
       }
+      
+      // Сетка координат на кэше
+      cacheCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      cacheCtx.lineWidth = 1;
+      
+      const gridStep = 100;
+      for (let x = 0; x <= mapWidth; x += gridStep) {
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(x, 0);
+        cacheCtx.lineTo(x, mapHeight);
+        cacheCtx.stroke();
+      }
+      
+      for (let y = 0; y <= mapHeight; y += gridStep) {
+        cacheCtx.beginPath();
+        cacheCtx.moveTo(0, y);
+        cacheCtx.lineTo(mapWidth, y);
+        cacheCtx.stroke();
+      }
+      
+      // Границы карты
+      cacheCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      cacheCtx.lineWidth = 2;
+      cacheCtx.strokeRect(0, 0, mapWidth, mapHeight);
     }
     
-    // Сетка координат
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
-    this.ctx.lineWidth = 1;
-    
-    const gridStep = 100;
-    for (let x = 0; x <= mapWidth; x += gridStep) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, mapHeight);
-      this.ctx.stroke();
-    }
-    
-    for (let y = 0; y <= mapHeight; y += gridStep) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(mapWidth, y);
-      this.ctx.stroke();
-    }
-    
-    // Границы карты
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(0, 0, mapWidth, mapHeight);
+    // Рисуем кэшированную карту
+    this.ctx.drawImage(this.worldMapCache, 0, 0);
   }
 
   /**
@@ -629,11 +639,11 @@ export class GameEngine {
       return null;
     }
     
-    // Проверка стоимости (energyCost)
-    const energyCost = nodeConfig.energyCost || 0;
+    // Проверка стоимости (influence)
+    const influenceCost = nodeConfig.energyCost || 0;
     
-    if (this.state.resources.energy < energyCost) {
-      console.log('Недостаточно энергии! Требуется:', energyCost, 'Доступно:', this.state.resources.energy);
+    if ((this.state.resources.influence || 0) < influenceCost) {
+      console.log('Недостаточно энергии! Требуется:', influenceCost, 'Доступно:', this.state.resources.influence);
       return null;
     }
     
@@ -641,7 +651,7 @@ export class GameEngine {
     const node = this.state.network.addNode(worldX, worldY, type, terrainType);
     
     // Списание стоимости
-    this.state.resources.energy -= energyCost;
+    this.state.resources.influence = (this.state.resources.influence || 0) - influenceCost;
     
     // Пересчет дохода после добавления узла
     this.state.network.calculateIncome();
@@ -665,7 +675,7 @@ export class GameEngine {
     
     // Возврат части энергии (50%)
     if (nodeConfig && nodeConfig.energyCost) {
-      this.state.resources.energy += Math.floor(nodeConfig.energyCost * 0.5);
+      this.state.resources.influence = (this.state.resources.influence || 0) + Math.floor(nodeConfig.energyCost * 0.5);
     }
     
     return this.state.network.removeNode(nodeId);

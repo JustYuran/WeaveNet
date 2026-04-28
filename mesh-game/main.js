@@ -63,10 +63,7 @@ function initElements() {
   elements.nodeDetails = document.getElementById('node-details');
   elements.btnRemoveNode = document.getElementById('btn-remove-node');
   
-  // Нижняя панель
-  elements.btnViewDefault = document.getElementById('btn-view-default');
-  elements.btnViewCoverage = document.getElementById('btn-view-coverage');
-  elements.btnViewLoad = document.getElementById('btn-view-load');
+  // Нижняя панель (виды удалены)
   
   // Модальные окна
   elements.modalTutorial = document.getElementById('modal-tutorial');
@@ -106,10 +103,11 @@ function updateResources(data) {
   const resources = data.resources || {};
   const income = data.income || {};
   
-  elements.influence.textContent = Math.floor(resources.energy || 0);
-  elements.data.textContent = Math.floor(resources.info || 0);
-  elements.influenceIncome.textContent = `+${(income.energy || 0).toFixed(1)}/сек`;
-  elements.dataIncome.textContent = `+${(income.info || 0).toFixed(1)}/сек`;
+  // Исправлено: energy -> influence для энергии, info -> data для информации
+  elements.influence.textContent = Math.floor(resources.influence || resources.energy || 0);
+  elements.data.textContent = Math.floor(resources.data || resources.info || 0);
+  elements.influenceIncome.textContent = `+${(income.influence || income.energy || 0).toFixed(1)}/сек`;
+  elements.dataIncome.textContent = `+${(income.data || income.info || 0).toFixed(1)}/сек`;
 }
 
 /**
@@ -278,10 +276,15 @@ function setupEventListeners() {
       }
     });
     
-    // Тултип при наведении
+    // Тултип при наведении - показывает стоимость и описание
     btn.addEventListener('mouseenter', (e) => {
-      if (btn.title) {
-        showTooltip(btn.title, e.clientX, e.clientY);
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const cost = nodeConfig.energyCost || 0;
+        const description = nodeConfig.name || '';
+        const tooltipText = `Стоимость: ${cost} энергии\n${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
       }
     });
     

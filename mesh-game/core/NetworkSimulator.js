@@ -51,9 +51,26 @@ export class NetworkSimulator {
     this.jammerZones = missionConfig.map?.jammerZones || [];
     this.homeNodes = missionConfig.map?.homeNodes || [];
     
-    // Генерация случайной карты 1920x1080
-    this.mapWidth = 1920;
-    this.mapHeight = 1080;
+    // Генерация случайной карты 200x200 участков (1 участок = 5 пикселей)
+    this.mapWidth = 1000;  // 200 участков * 5 пикселей
+    this.mapHeight = 1000; // 200 участков * 5 пикселей
+    this.tileSize = 5;     // 5 пикселей = 1 метр/участок
+    
+    // Генерируем тайлы карты случайно
+    this.terrainMap = [];
+    for (let tx = 0; tx < 200; tx++) {
+      this.terrainMap[tx] = [];
+      for (let ty = 0; ty < 200; ty++) {
+        const rand = Math.random();
+        if (rand < 0.15) {
+          this.terrainMap[tx][ty] = 'water';      // 15% вода
+        } else if (rand < 0.35) {
+          this.terrainMap[tx][ty] = 'mountain';   // 20% холмы/горы
+        } else {
+          this.terrainMap[tx][ty] = 'plain';      // 65% равнина
+        }
+      }
+    }
     
     // Создание Хаба (базовое строение в центре карты)
     const hubX = this.mapWidth / 2;
@@ -61,61 +78,83 @@ export class NetworkSimulator {
     this.addNode(hubX, hubY, 'hub');
     
     // Генерация 50 роутеров случайным образом на карте с минимальным расстоянием между ними
+    // Роутер занимает 2x2 участка (10x10 пикселей), от него 1 участок в радиусе ничего не спавнится
     const routerPositions = [];
     for (let i = 0; i < 50; i++) {
-      let x, y, valid;
+      let tx, ty, x, y, valid;
       let attempts = 0;
       do {
-        x = Math.random() * this.mapWidth;
-        y = Math.random() * this.mapHeight;
-        // Проверка: не ближе 25 метров от хаба
+        tx = Math.floor(Math.random() * 200);
+        ty = Math.floor(Math.random() * 200);
+        x = tx * this.tileSize + this.tileSize / 2;
+        y = ty * this.tileSize + this.tileSize / 2;
+        
+        // Проверка: не ближе 25 метров (5 участков) от хаба
         const distToHub = Math.hypot(x - hubX, y - hubY);
-        // Проверка: не ближе 0.5 метра от других роутеров
+        
+        // Проверка: не на воде
+        const terrain = this.terrainMap[tx]?.[ty] || 'plain';
+        
+        // Проверка: не ближе 1 участка от других роутеров
         let tooCloseToRouter = false;
         for (const pos of routerPositions) {
-          const distToRouter = Math.hypot(x - pos.x, y - pos.y);
-          if (distToRouter < 0.5) {
+          const distToRouter = Math.hypot(tx - pos.tx, ty - pos.ty);
+          if (distToRouter < 2) { // 1 участок в радиусе = дистанция 2
             tooCloseToRouter = true;
             break;
           }
         }
-        valid = distToHub >= 25 && !tooCloseToRouter;
+        
+        valid = distToHub >= 25 && terrain !== 'water' && !tooCloseToRouter;
         attempts++;
       } while (!valid && attempts < 100);
       
       if (valid) {
         this.addNode(x, y, 'router');
-        routerPositions.push({ x, y });
+        routerPositions.push({ tx, ty, x, y });
       }
     }
     
-    // Для каждого роутера генерируем от 1 до 5 пользователей в радиусе его покрытия
+    // Для каждого роутера генерируем от 1 до 5 пользователей в радиусе 5 участков
     const userPositions = [];
     for (const router of routerPositions) {
       const userCount = Math.floor(Math.random() * 5) + 1; // 1-5 пользователей
       for (let i = 0; i < userCount; i++) {
-        let x, y, valid;
+        let tx, ty, x, y, valid;
         let attempts = 0;
         do {
-          // Случайная позиция в радиусе 80px от роутера (радиус роутера)
+          // Случайная позиция в радиусе 5 участков от роутера
           const angle = Math.random() * Math.PI * 2;
-          const distance = Math.random() * 80;
-          x = router.x + Math.cos(angle) * distance;
-          y = router.y + Math.sin(angle) * distance;
+          const distanceTiles = Math.random() * 5; // до 5 участков
+          tx = Math.floor(router.tx + Math.cos(angle) * distanceTiles);
+          ty = Math.floor(router.ty + Math.sin(angle) * distanceTiles);
+          
+          // Ограничиваем координаты тайла
+          tx = Math.max(0, Math.min(199, tx));
+          ty = Math.max(0, Math.min(199, ty));
+          
+          x = tx * this.tileSize + this.tileSize / 2;
+          y = ty * this.tileSize + this.tileSize / 2;
+          
           // Проверка границ карты
           valid = x >= 0 && x <= this.mapWidth && y >= 0 && y <= this.mapHeight;
-          // Проверка: не ближе 0.5 метра от других юзеров и роутеров
+          
+          // Проверка: не на воде
+          const terrain = this.terrainMap[tx]?.[ty] || 'plain';
+          if (terrain === 'water') valid = false;
+          
+          // Проверка: не ближе 0.5 метра (1 тайл) от других юзеров и роутеров
           let tooClose = false;
           for (const pos of userPositions) {
-            const dist = Math.hypot(x - pos.x, y - pos.y);
-            if (dist < 0.5) {
+            const dist = Math.hypot(tx - pos.tx, ty - pos.ty);
+            if (dist < 1) {
               tooClose = true;
               break;
             }
           }
           for (const pos of routerPositions) {
-            const dist = Math.hypot(x - pos.x, y - pos.y);
-            if (dist < 0.5) {
+            const dist = Math.hypot(tx - pos.tx, ty - pos.ty);
+            if (dist < 1) {
               tooClose = true;
               break;
             }
@@ -126,43 +165,51 @@ export class NetworkSimulator {
         
         if (valid) {
           this.addNode(x, y, 'home');
-          userPositions.push({ x, y });
+          userPositions.push({ tx, ty, x, y });
         }
       }
     }
     
     // Дополнительно 500 пользователей случайным образом по карте (не ближе 25м от хаба)
     for (let i = 0; i < 500; i++) {
-      let x, y, valid;
+      let tx, ty, x, y, valid;
       let attempts = 0;
       do {
-        x = Math.random() * this.mapWidth;
-        y = Math.random() * this.mapHeight;
-        // Проверка: не ближе 25 метров от хаба
+        tx = Math.floor(Math.random() * 200);
+        ty = Math.floor(Math.random() * 200);
+        x = tx * this.tileSize + this.tileSize / 2;
+        y = ty * this.tileSize + this.tileSize / 2;
+        
+        // Проверка: не ближе 25 метров (5 участков) от хаба
         const distToHub = Math.hypot(x - hubX, y - hubY);
-        // Проверка: не ближе 0.5 метра от других юзеров и роутеров
+        
+        // Проверка: не на воде
+        const terrain = this.terrainMap[tx]?.[ty] || 'plain';
+        
+        // Проверка: не ближе 1 тайла от других юзеров и роутеров
         let tooClose = false;
         for (const pos of userPositions) {
-          const dist = Math.hypot(x - pos.x, y - pos.y);
-          if (dist < 0.5) {
+          const dist = Math.hypot(tx - pos.tx, ty - pos.ty);
+          if (dist < 1) {
             tooClose = true;
             break;
           }
         }
         for (const pos of routerPositions) {
-          const dist = Math.hypot(x - pos.x, y - pos.y);
-          if (dist < 0.5) {
+          const dist = Math.hypot(tx - pos.tx, ty - pos.ty);
+          if (dist < 1) {
             tooClose = true;
             break;
           }
         }
-        valid = distToHub >= 25 && !tooClose;
+        
+        valid = distToHub >= 25 && terrain !== 'water' && !tooClose;
         attempts++;
       } while (!valid && attempts < 100);
       
       if (valid) {
         this.addNode(x, y, 'home');
-        userPositions.push({ x, y });
+        userPositions.push({ tx, ty, x, y });
       }
     }
     
@@ -414,22 +461,22 @@ export class NetworkSimulator {
    * Расчет дохода от узлов (устаревший метод, оставлен для совместимости)
    */
   calculateIncome() {
-    let totalEnergy = 0;
-    let totalInfo = 0;
+    let totalInfluence = 0;
+    let totalData = 0;
     
     for (const node of this.nodes) {
       // Одинокий узел тоже приносит доход
       const isAlone = this.nodes.length === 1;
       // Узел дает доход если подключен к сети (имеет соединения) или он один
       if (isAlone || node.connections.length > 0) {
-        totalEnergy += node.energyCost || 0;
-        totalInfo += node.throughput || 0;
+        totalInfluence += node.energyCost || 0;
+        totalData += node.throughput || 0;
       }
     }
     
     this.incomePerSecond = {
-      energy: totalEnergy,
-      info: totalInfo
+      influence: totalInfluence,
+      data: totalData
     };
     
     return this.incomePerSecond;
@@ -661,22 +708,35 @@ export class NetworkSimulator {
   }
 
   /**
-   * Определение типа местности по координатам
+   * Определение типа местности по координатам (использует terrainMap)
    */
   getTerrainType(x, y) {
-    // Простая процедурная генерация местности
-    // Используем синусоиды для создания "континентов"
-    const scale = 0.01;
-    const mountainThreshold = 0.6;
-    const waterThreshold = -0.3;
+    // Используем сгенерированную карту тайлов
+    if (!this.terrainMap || !this.tileSize) {
+      // Fallback для старой логики если карта еще не сгенерирована
+      const scale = 0.01;
+      const mountainThreshold = 0.6;
+      const waterThreshold = -0.3;
+      
+      const noise = Math.sin(x * scale) * Math.cos(y * scale) + 
+                    Math.sin(x * scale * 2.5 + 1) * 0.5 +
+                    Math.cos(y * scale * 1.8 + 2) * 0.3;
+      
+      if (noise > mountainThreshold) return 'mountain';
+      if (noise < waterThreshold) return 'water';
+      return 'plain';
+    }
     
-    const noise = Math.sin(x * scale) * Math.cos(y * scale) + 
-                  Math.sin(x * scale * 2.5 + 1) * 0.5 +
-                  Math.cos(y * scale * 1.8 + 2) * 0.3;
+    // Конвертируем пиксели в тайлы
+    const tx = Math.floor(x / this.tileSize);
+    const ty = Math.floor(y / this.tileSize);
     
-    if (noise > mountainThreshold) return 'mountain';
-    if (noise < waterThreshold) return 'water';
-    return 'plain';
+    // Проверяем границы
+    if (tx < 0 || tx >= 200 || ty < 0 || ty >= 200) {
+      return 'plain';
+    }
+    
+    return this.terrainMap[tx]?.[ty] || 'plain';
   }
 
   /**
