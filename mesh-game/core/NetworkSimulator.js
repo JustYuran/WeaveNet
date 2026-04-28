@@ -34,7 +34,7 @@ export class NetworkSimulator {
     
     // Таймер ресурсов
     this.resourceAccumulator = 0;
-    this.incomePerSecond = { influence: 0, data: 0 };
+    this.incomePerSecond = { data: 0 };
   }
 
   /**
@@ -462,7 +462,6 @@ export class NetworkSimulator {
    * Расчет дохода от узлов (устаревший метод, оставлен для совместимости)
    */
   calculateIncome() {
-    let totalInfluence = 0;
     let totalData = 0;
     
     for (const node of this.nodes) {
@@ -470,13 +469,11 @@ export class NetworkSimulator {
       const isAlone = this.nodes.length === 1;
       // Узел дает доход если подключен к сети (имеет соединения) или он один
       if (isAlone || node.connections.length > 0) {
-        totalInfluence += node.energyCost || 0;
         totalData += node.throughput || 0;
       }
     }
     
     this.incomePerSecond = {
-      influence: totalInfluence,
       data: totalData
     };
     

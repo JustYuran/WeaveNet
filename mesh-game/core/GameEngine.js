@@ -12,7 +12,7 @@ export class GameEngine {
     this.state = {
       currentMission: null,
       network: null,
-      resources: { energy: 1000, info: 0 },
+      resources: { info: 0 },
       gameTime: 0,
       isPaused: false,
       timeScale: 1,
@@ -102,18 +102,17 @@ export class GameEngine {
     if (this.state.network) {
       this.state.network.update(deltaTime);
       
-      // Получение дохода от узлов (influence и data)
+      // Получение дохода от узлов (data)
       const income = this.state.network.getIncome();
       
       // Начисление ресурсов
-      this.state.resources.influence = (this.state.resources.influence || 0) + (income.influence || 0) * deltaTime;
-      this.state.resources.data = (this.state.resources.data || 0) + (income.data || 0) * deltaTime;
+      this.state.resources.info = (this.state.resources.info || 0) + (income.data || 0) * deltaTime;
       
       // Уведомление UI об обновлении ресурсов (каждые 0.1 сек)
       if (this.onResourceUpdate) {
         this.onResourceUpdate({
           resources: { ...this.state.resources },
-          income: { influence: income.influence || 0, data: income.data || 0 }
+          income: { data: income.data || 0 }
         });
       }
       
@@ -640,10 +639,10 @@ export class GameEngine {
     }
     
     // Проверка стоимости (influence)
-    const influenceCost = nodeConfig.energyCost || 0;
+    const influenceCost = nodeConfig.cost || 0;
     
-    if ((this.state.resources.influence || 0) < influenceCost) {
-      console.log('Недостаточно энергии! Требуется:', influenceCost, 'Доступно:', this.state.resources.influence);
+    if ((this.state.resources.info || 0) < influenceCost) {
+      console.log('Недостаточно информации! Требуется:', influenceCost, 'Доступно:', this.state.resources.info);
       return null;
     }
     
@@ -651,7 +650,7 @@ export class GameEngine {
     const node = this.state.network.addNode(worldX, worldY, type, terrainType);
     
     // Списание стоимости
-    this.state.resources.influence = (this.state.resources.influence || 0) - influenceCost;
+    this.state.resources.info = (this.state.resources.info || 0) - influenceCost;
     
     // Пересчет дохода после добавления узла
     this.state.network.calculateIncome();
@@ -673,9 +672,9 @@ export class GameEngine {
       return false;
     }
     
-    // Возврат части энергии (50%)
-    if (nodeConfig && nodeConfig.energyCost) {
-      this.state.resources.influence = (this.state.resources.influence || 0) + Math.floor(nodeConfig.energyCost * 0.5);
+    // Возврат части стоимости (50%)
+    if (nodeConfig && nodeConfig.cost) {
+      this.state.resources.info = (this.state.resources.info || 0) + Math.floor(nodeConfig.cost * 0.5);
     }
     
     return this.state.network.removeNode(nodeId);
