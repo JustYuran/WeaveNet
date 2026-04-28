@@ -15,8 +15,11 @@ export class Node {
       this.config = { 
         radius: 100, 
         capacity: 50, 
-        income: { influence: 0.5, data: 0.2 }, 
-        cost: { influence: 10, data: 0 }, 
+        energyCost: 0,
+        throughput: 0,
+        isStatic: false,
+        isHub: false,
+        generatesData: false,
         emoji: '📱',
         color: '#00ff88',
         shape: 'circle',
@@ -28,11 +31,14 @@ export class Node {
       const nodeTypeConfig = config.nodeTypes[type];
       if (!nodeTypeConfig) {
         console.warn('Unknown node type:', type, 'using basic');
-        this.config = config.nodeTypes.basic || { 
+        this.config = config.nodeTypes.basic || config.nodeTypes.repeater || { 
           radius: 100, 
           capacity: 50, 
-          income: { influence: 0.5, data: 0.2 }, 
-          cost: { influence: 10, data: 0 }, 
+          energyCost: 0,
+          throughput: 0,
+          isStatic: false,
+          isHub: false,
+          generatesData: false,
           emoji: '📱',
           color: '#00ff88',
           shape: 'circle',
@@ -41,7 +47,7 @@ export class Node {
       } else {
         this.config = nodeTypeConfig;
       }
-      this.terrainConfig = (config.terrain && config.terrain[terrainType]) || (config.terrain && config.terrain.plain) || { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
+      this.terrainConfig = { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
     }
     
     // Параметры из конфига с модификаторами местности
@@ -51,11 +57,11 @@ export class Node {
     this.baseRadius = this.config.radius;
     this.radius = this.baseRadius * radiusMod;
     this.capacity = this.config.capacity;
-    this.income = this.config.income;
-    this.baseCost = { 
-      influence: this.config.cost.influence * costMod, 
-      data: this.config.cost.data * costMod 
-    };
+    this.energyCost = this.config.energyCost || 0;
+    this.throughput = this.config.throughput || 0;
+    this.isStatic = this.config.isStatic || false;
+    this.isHub = this.config.isHub || false;
+    this.generatesData = this.config.generatesData || false;
     
     // Визуальные параметры из конфига
     this.color = this.config.color || '#00ff88';

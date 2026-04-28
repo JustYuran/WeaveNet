@@ -55,14 +55,19 @@ export class NetworkSimulator {
     this.mapWidth = 1920;
     this.mapHeight = 1080;
     
-    // Генерация 550 пользователей (синие точки 3px)
+    // Создание Хаба (базовое строение в центре карты)
+    const hubX = this.mapWidth / 2;
+    const hubY = this.mapHeight / 2;
+    this.addNode(hubX, hubY, 'hub');
+    
+    // Генерация 550 пользователей/домов (синие точки 3px) - генерируют информацию
     for (let i = 0; i < 550; i++) {
       const x = Math.random() * this.mapWidth;
       const y = Math.random() * this.mapHeight;
-      this.addNode(x, y, 'user');
+      this.addNode(x, y, 'home');
     }
     
-    // Генерация 60 роутеров (оранжевые точки 6px)
+    // Генерация 60 роутеров (оранжевые точки 6px) - передатчики информации
     for (let i = 0; i < 60; i++) {
       const x = Math.random() * this.mapWidth;
       const y = Math.random() * this.mapHeight;
@@ -79,7 +84,7 @@ export class NetworkSimulator {
       }
     }
     
-    // Создание домашних узлов
+    // Создание домашних узлов из конфига
     if (this.homeNodes) {
       for (const nodeData of this.homeNodes) {
         this.addNode(nodeData.x, nodeData.y, nodeData.type);
@@ -308,28 +313,104 @@ export class NetworkSimulator {
   }
 
   /**
-   * Расчет дохода от узлов
+   * Расчет дохода от узлов (устаревший метод, оставлен для совместимости)
    */
   calculateIncome() {
-    let totalInfluence = 0;
-    let totalData = 0;
+    let totalEnergy = 0;
+    let totalInfo = 0;
     
     for (const node of this.nodes) {
       // Одинокий узел тоже приносит доход
       const isAlone = this.nodes.length === 1;
       // Узел дает доход если подключен к сети (имеет соединения) или он один
       if (isAlone || node.connections.length > 0) {
-        totalInfluence += node.income.influence;
-        totalData += node.income.data;
+        totalEnergy += node.energyCost || 0;
+        totalInfo += node.throughput || 0;
       }
     }
     
     this.incomePerSecond = {
-      influence: totalInfluence,
-      data: totalData
+      energy: totalEnergy,
+      info: totalInfo
     };
     
     return this.incomePerSecond;
+  }
+
+  /**
+   * Расчет получения информации от подключенных к Хабу пользователей
+   * Информация генерируется пользователями (home) и передается через узлы игрока к Хабу
+   */
+  calculateInfoGain() {
+    let totalInfoGain = 0;
+    
+    // Находим Хаб
+    const hub = this.nodes.find(n => n.type === 'hub');
+    if (!hub) return 0;
+    
+    // Находим все узлы, которые принадлежат игроку (не static и не hub)
+    const playerNodes = this.nodes.filter(n => 
+      !n.isStatic && n.type !== 'hub' && n.type !== 'home' && n.type !== 'router'
+    );
+    
+    // Находим всех пользователей (home), которые генерируют информацию
+    const homeNodes = this.nodes.filter(n => n.type === 'home');
+    
+    // Для каждого home проверяем, подключен ли он к Хабу через цепочку узлов
+    for (const home of homeNodes) {
+      if (this.isConnectedToHub(home, hub, playerNodes)) {
+        // Дом генерирует информацию согласно throughput из конфига
+        const homeConfig = this.config.nodeTypes?.home;
+        const throughput = homeConfig?.throughput || 10;
+        totalInfoGain += throughput;
+      }
+    }
+    
+    return totalInfoGain;
+  }
+  
+  /**
+   * Проверка, подключен ли узел к Хабу через цепочку узлов игрока
+   * Использует BFS для поиска пути
+   */
+  isConnectedToHub(startNode, hub, playerNodes) {
+    if (startNode.id === hub.id) return true;
+    
+    const visited = new Set();
+    const queue = [startNode];
+    visited.add(startNode.id);
+    
+    // Создаем мапу узлов для быстрого доступа
+    const nodeMap = new Map();
+    for (const node of this.nodes) {
+      nodeMap.set(node.id, node);
+    }
+    
+    while (queue.length > 0) {
+      const current = queue.shift();
+      
+      // Проверяем соседей
+      for (const neighborId of current.connections) {
+        const neighbor = nodeMap.get(neighborId);
+        if (!neighbor || visited.has(neighbor.id)) continue;
+        
+        // Если это Хаб - путь найден
+        if (neighbor.id === hub.id) {
+          return true;
+        }
+        
+        // Проверяем, является ли сосед узлом игрока или роутером/домом (передатчики)
+        const isPlayerNode = !neighbor.isStatic && neighbor.type !== 'hub';
+        const isRouterOrHome = neighbor.type === 'router' || neighbor.type === 'home';
+        
+        if (isPlayerNode || isRouterOrHome) {
+          visited.add(neighbor.id);
+          queue.push(neighbor);
+        }
+      }
+    }
+    
+    return false;
   }
 
   /**

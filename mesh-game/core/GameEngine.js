@@ -12,13 +12,14 @@ export class GameEngine {
     this.state = {
       currentMission: null,
       network: null,
-      resources: { influence: 0, data: 0 },
+      resources: { energy: 1000, info: 0 },
       gameTime: 0,
       isPaused: false,
       timeScale: 1,
       selectedNode: null,
       hoverNode: null,
-      camera: { x: 0, y: 0, zoom: 1 }
+      camera: { x: 0, y: 0, zoom: 1 },
+      viewMode: 'default'
     };
     
     this.config = null;
@@ -101,16 +102,19 @@ export class GameEngine {
     if (this.state.network) {
       this.state.network.update(deltaTime);
       
-      // Обновление ресурсов от дохода
-      const income = this.state.network.getIncome();
-      this.state.resources.influence += income.influence * deltaTime;
-      this.state.resources.data += income.data * deltaTime;
+      // Регенерация энергии
+      const energyRegen = (this.config?.resources?.energy?.regenRate || 10) * deltaTime;
+      this.state.resources.energy += energyRegen;
+      
+      // Получение информации от подключенных пользователей
+      const infoGain = this.state.network.calculateInfoGain();
+      this.state.resources.info += infoGain * deltaTime;
       
       // Уведомление UI об обновлении ресурсов (каждые 0.1 сек)
       if (this.onResourceUpdate) {
         this.onResourceUpdate({
           resources: { ...this.state.resources },
-          income: income
+          income: { energy: energyRegen, info: infoGain }
         });
       }
       
@@ -399,7 +403,7 @@ export class GameEngine {
       const baseRadius = node.selected ? size * 1.3 : size;
       
       // Свечение только для активных игровых узлов (не для пользователей и роутеров)
-      const isGameNode = node.type === 'relay' || node.type === 'server' || node.type === 'stealth' || node.type === 'basic';
+      const isGameNode = node.type === 'repeater' || node.type === 'server' || node.type === 'stealth_repeater' || node.type === 'hub';
       if (isGameNode) {
         const gradient = this.ctx.createRadialGradient(
           node.x, node.y, 0,
@@ -436,6 +440,22 @@ export class GameEngine {
         this.ctx.lineTo(node.x - baseRadius, node.y + h);
         this.ctx.closePath();
         this.ctx.fill();
+      } else if (shape === 'hexagon') {
+        // Отрисовка шестиугольника для Хаба
+        const sides = 6;
+        this.ctx.beginPath();
+        for (let i = 0; i < sides; i++) {
+          const angle = (i * 2 * Math.PI) / sides - Math.PI / 6;
+          const x = node.x + baseRadius * Math.cos(angle);
+          const y = node.y + baseRadius * Math.sin(angle);
+          if (i === 0) {
+            this.ctx.moveTo(x, y);
+          } else {
+            this.ctx.lineTo(x, y);
+          }
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
       }
       
       // Обводка при выделении или наведении
@@ -461,11 +481,26 @@ export class GameEngine {
           this.ctx.lineTo(node.x - baseRadius - 3, node.y + h);
           this.ctx.closePath();
           this.ctx.stroke();
+        } else if (shape === 'hexagon') {
+          const sides = 6;
+          this.ctx.beginPath();
+          for (let i = 0; i < sides; i++) {
+            const angle = (i * 2 * Math.PI) / sides - Math.PI / 6;
+            const x = node.x + (baseRadius + 3) * Math.cos(angle);
+            const y = node.y + (baseRadius + 3) * Math.sin(angle);
+            if (i === 0) {
+              this.ctx.moveTo(x, y);
+            } else {
+              this.ctx.lineTo(x, y);
+            }
+          }
+          this.ctx.closePath();
+          this.ctx.stroke();
         }
       }
       
       // Индикатор типа узла (эмодзи из конфига) - только для игровых узлов
-      if (isGameNode && node.type !== 'user' && node.type !== 'router') {
+      if (isGameNode) {
         this.ctx.font = '12px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
@@ -569,46 +604,37 @@ export class GameEngine {
     const worldX = (x - this.state.camera.x) / this.state.camera.zoom;
     const worldY = (y - this.state.camera.y) / this.state.camera.zoom;
     
-    // Проверка можно ли строить в этой точке
+    // Проверка можно ли строить в этой точке (только для игровых узлов)
+    const nodeConfig = this.config.nodeTypes[type];
+    if (!nodeConfig) {
+      console.error('Неизвестный тип узла:', type);
+      return null;
+    }
+    
+    // Статические узлы (home, router) и хаб нельзя размещать игроком
+    if (nodeConfig.isStatic || nodeConfig.isHub) {
+      console.log('Этот узел нельзя разместить вручную');
+      return null;
+    }
+    
     if (!this.state.network.canBuildAt(worldX, worldY)) {
       console.log('Нельзя строить на воде!');
       return null;
     }
     
-    // Проверка существования конфигурации узла
-    if (!this.config || !this.config.nodeTypes || !this.config.nodeTypes[type]) {
-      console.error('Неизвестный тип узла:', type);
-      console.log('Доступные типы:', this.config ? Object.keys(this.config.nodeTypes || {}) : 'config not loaded');
+    // Проверка стоимости (energyCost)
+    const energyCost = nodeConfig.energyCost || 0;
+    
+    if (this.state.resources.energy < energyCost) {
+      console.log('Недостаточно энергии! Требуется:', energyCost, 'Доступно:', this.state.resources.energy);
       return null;
     }
     
-    // Определение типа местности
     const terrainType = this.state.network.getTerrainType(worldX, worldY);
-    
-    // Проверка стоимости
-    const nodeConfig = this.config.nodeTypes[type];
-    // Защита от отсутствующей конфигурации местности
-    const terrainConfig = (this.config.terrain && this.config.terrain[terrainType]) 
-      ? this.config.terrain[terrainType] 
-      : { costModifier: 1.0, radiusModifier: 1.0, buildable: true };
-    const costMultiplier = terrainConfig.costModifier || 1.0;
-    
-    const cost = {
-      influence: Math.floor(nodeConfig.cost.influence * costMultiplier),
-      data: Math.floor(nodeConfig.cost.data * costMultiplier)
-    };
-    
-    if (this.state.resources.influence < cost.influence || 
-        this.state.resources.data < cost.data) {
-      console.log('Недостаточно ресурсов! Требуется:', cost, 'Доступно:', this.state.resources);
-      return null;
-    }
-    
     const node = this.state.network.addNode(worldX, worldY, type, terrainType);
     
     // Списание стоимости
-    this.state.resources.influence -= cost.influence;
-    this.state.resources.data -= cost.data;
+    this.state.resources.energy -= energyCost;
     
     // Пересчет дохода после добавления узла
     this.state.network.calculateIncome();
@@ -623,10 +649,11 @@ export class GameEngine {
     const node = this.state.network.getNodeById(nodeId);
     if (!node) return false;
     
-    // Возврат части ресурсов
-    const cost = this.config.nodeTypes[node.type].cost;
-    this.state.resources.influence += cost.influence * 0.5;
-    this.state.resources.data += cost.data * 0.5;
+    // Возврат части энергии (50%)
+    const nodeConfig = this.config.nodeTypes[node.type];
+    if (nodeConfig && nodeConfig.energyCost) {
+      this.state.resources.energy += Math.floor(nodeConfig.energyCost * 0.5);
+    }
     
     return this.state.network.removeNode(nodeId);
   }
