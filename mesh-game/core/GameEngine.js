@@ -459,8 +459,11 @@ export class GameEngine {
     
     // Проверка стоимости
     const nodeConfig = this.config.nodeTypes[type];
-    const terrainConfig = this.config.terrain[terrainType];
-    const costMultiplier = terrainConfig?.costModifier || 1.0;
+    // Защита от отсутствующей конфигурации местности
+    const terrainConfig = (this.config.terrain && this.config.terrain[terrainType]) 
+      ? this.config.terrain[terrainType] 
+      : { costModifier: 1.0, radiusModifier: 1.0, buildable: true };
+    const costMultiplier = terrainConfig.costModifier || 1.0;
     
     const cost = {
       influence: Math.floor(nodeConfig.cost.influence * costMultiplier),
