@@ -472,12 +472,16 @@ export class NetworkSimulator {
    */
   getTerrainInfo(x, y) {
     const type = this.getTerrainType(x, y);
+    // Защита от отсутствующей конфигурации местности
+    const terrainConfig = (this.config && this.config.terrain) ? this.config.terrain : {};
+    const terrainData = terrainConfig[type] || {};
+    
     return {
       type,
-      name: this.config.terrain[type]?.name || 'Неизвестно',
-      buildable: this.config.terrain[type]?.buildable ?? true,
-      radiusModifier: this.config.terrain[type]?.radiusModifier || 1.0,
-      costModifier: this.config.terrain[type]?.costModifier || 1.0
+      name: terrainData.name || 'Равнина',
+      buildable: terrainData.buildable ?? true,
+      radiusModifier: terrainData.radiusModifier || 1.0,
+      costModifier: terrainData.costModifier || 1.0
     };
   }
 }
