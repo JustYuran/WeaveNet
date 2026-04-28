@@ -196,77 +196,11 @@ export class CanvasRenderer {
   }
 
   /**
-   * Отрисовка в режиме тепловой карты покрытия
-   */
-  renderCoverageHeatmap() {
-    if (this.viewMode !== 'coverage') return;
-    
-    for (const node of this.game.state.network.nodes) {
-      // Зеленая зона покрытия
-      const gradient = this.ctx.createRadialGradient(
-        node.x, node.y, 0,
-        node.x, node.y, node.radius
-      );
-      gradient.addColorStop(0, 'rgba(0, 255, 136, 0.2)');
-      gradient.addColorStop(1, 'rgba(0, 255, 136, 0)');
-      
-      this.ctx.fillStyle = gradient;
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-      this.ctx.fill();
-      
-      // Граница радиуса
-      this.ctx.strokeStyle = 'rgba(0, 255, 136, 0.4)';
-      this.ctx.setLineDash([5, 5]);
-      this.ctx.lineWidth = 1;
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-      this.ctx.stroke();
-      this.ctx.setLineDash([]);
-    }
-  }
-
-  /**
-   * Отрисовка в режиме тепловой карты нагрузки
-   */
-  renderLoadHeatmap() {
-    if (this.viewMode !== 'load') return;
-    
-    for (const node of this.game.state.network.nodes) {
-      const loadRatio = node.load / 100;
-      
-      // Цвет от зеленого (0%) к красному (100%)
-      const r = Math.floor(255 * loadRatio);
-      const g = Math.floor(255 * (1 - loadRatio));
-      const color = `rgba(${r}, ${g}, 0, 0.3)`;
-      
-      const gradient = this.ctx.createRadialGradient(
-        node.x, node.y, 0,
-        node.x, node.y, node.radius
-      );
-      gradient.addColorStop(0, color);
-      gradient.addColorStop(1, 'transparent');
-      
-      this.ctx.fillStyle = gradient;
-      this.ctx.beginPath();
-      this.ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-      this.ctx.fill();
-    }
-  }
-
-  /**
    * Полная перерисовка
    */
   render() {
-    // Вызов рендера игры
+    // Вызов рендера игры (теперь включает отрисовку тепловых карт)
     this.game.render();
-    
-    // Дополнительная отрисовка тепловых карт поверх
-    if (this.viewMode === 'coverage') {
-      this.renderCoverageHeatmap();
-    } else if (this.viewMode === 'load') {
-      this.renderLoadHeatmap();
-    }
   }
 
   /**
