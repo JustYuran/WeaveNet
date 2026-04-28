@@ -20,10 +20,8 @@ const elements = {};
 function initElements() {
   elements.canvas = document.getElementById('gameCanvas');
   
-  // Ресурсы
-  elements.influence = document.getElementById('influence');
+  // Ресурсы (только Информация, Энергия удалена)
   elements.data = document.getElementById('data');
-  elements.influenceIncome = document.getElementById('influence-income');
   elements.dataIncome = document.getElementById('data-income');
   
   // Время
@@ -103,11 +101,9 @@ function updateResources(data) {
   const resources = data.resources || {};
   const income = data.income || {};
   
-  // Исправлено: energy -> influence для энергии, info -> data для информации
-  elements.influence.textContent = Math.floor(resources.influence || resources.energy || 0);
-  elements.data.textContent = Math.floor(resources.data || resources.info || 0);
-  elements.influenceIncome.textContent = `+${(income.influence || income.energy || 0).toFixed(1)}/сек`;
-  elements.dataIncome.textContent = `+${(income.data || income.info || 0).toFixed(1)}/сек`;
+  // Только Информация (Энергия удалена)
+  elements.data.textContent = Math.floor(resources.data || 0);
+  elements.dataIncome.textContent = `+${(income.data || 0).toFixed(1)}/сек`;
 }
 
 /**
@@ -184,7 +180,6 @@ function updateSelectedNodeInfo(node) {
   const canRemove = !nodeConfig.isStatic && !nodeConfig.isHub;
   
   const typeName = nodeConfig.name;
-  const energyCost = nodeConfig.energyCost || 0;
   const throughput = nodeConfig.throughput || 0;
   const radius = node.radius || 0;
   const status = node.status || 'unknown';
@@ -195,7 +190,6 @@ function updateSelectedNodeInfo(node) {
     Статус: ${status}<br>
     Радиус: ${radius}м<br>
     Пропускная способность: ${throughput} инф/сек<br>
-    Потребление: ${energyCost} Э/сек<br>
     Связей: ${connections}
   `;
   
@@ -276,19 +270,175 @@ function setupEventListeners() {
       }
     });
     
-    // Тултип при наведении - показывает стоимость и описание
+// Тултип при наведении - показывает описание
     btn.addEventListener('mouseenter', (e) => {
       const nodeType = btn.dataset.type;
       const nodeConfig = config?.nodeTypes?.[nodeType];
       if (nodeConfig) {
-        const cost = nodeConfig.energyCost || 0;
-        const description = nodeConfig.name || '';
-        const tooltipText = `Стоимость: ${cost} энергии\n${description}`;
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
         showTooltip(tooltipText, e.clientX, e.clientY);
       }
     });
-    
+
     btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
+// Тултип при наведении - показывает описание
+    btn.addEventListener('mouseenter', (e) => {
+      const nodeType = btn.dataset.type;
+      const nodeConfig = config?.nodeTypes?.[nodeType];
+      if (nodeConfig) {
+        const description = nodeConfig.description || nodeConfig.name || '';
+        const tooltipText = `${description}`;
+        showTooltip(tooltipText, e.clientX, e.clientY);
+      }
+    });
+
+    btn.addEventListener('mouseleave', hideTooltip);
+  });
   });
   
   // Управление временем
