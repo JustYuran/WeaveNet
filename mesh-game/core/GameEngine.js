@@ -152,8 +152,8 @@ export class GameEngine {
       this.state.camera.zoom
     );
     
-    // Отрисовка сетки карты
-    this.renderGrid();
+    // Отрисовка карты мира (фон)
+    this.renderWorldMap();
     
     // Отрисовка зон помех
     this.renderJammerZones();
@@ -180,34 +180,10 @@ export class GameEngine {
   }
 
   /**
-   * Отрисовка сетки
+   * Отрисовка сетки (удалено, используется renderWorldMap)
    */
   renderGrid() {
-    const gridSize = 50;
-    const mapWidth = 1000;
-    const mapHeight = 800;
-    
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    this.ctx.lineWidth = 1;
-    
-    for (let x = 0; x <= mapWidth; x += gridSize) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, mapHeight);
-      this.ctx.stroke();
-    }
-    
-    for (let y = 0; y <= mapHeight; y += gridSize) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(mapWidth, y);
-      this.ctx.stroke();
-    }
-    
-    // Границы карты
-    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-    this.ctx.lineWidth = 2;
-    this.ctx.strokeRect(0, 0, mapWidth, mapHeight);
+    // Метод устарел, используется renderWorldMap
   }
 
   /**
@@ -273,7 +249,57 @@ export class GameEngine {
       this.ctx.stroke();
     }
     
-    this.ctx.globalAlpha = 1;
+    this.ctx.globalAlpha = 1.0;
+  }
+
+  /**
+   * Отрисовка карты мира (фон)
+   */
+  renderWorldMap() {
+    const mapWidth = 1000;
+    const mapHeight = 800;
+    
+    // Рисуем континенты (упрощенно - эллипсы)
+    this.ctx.fillStyle = 'rgba(100, 149, 237, 0.15)';
+    
+    // Континент 1
+    this.ctx.beginPath();
+    this.ctx.ellipse(300, 250, 150, 100, 0, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Континент 2
+    this.ctx.beginPath();
+    this.ctx.ellipse(700, 400, 200, 150, 0.3, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Континент 3
+    this.ctx.beginPath();
+    this.ctx.ellipse(500, 650, 180, 120, -0.2, 0, Math.PI * 2);
+    this.ctx.fill();
+    
+    // Сетка координат
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+    this.ctx.lineWidth = 1;
+    
+    const gridSize = 100;
+    for (let x = 0; x <= mapWidth; x += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(x, 0);
+      this.ctx.lineTo(x, mapHeight);
+      this.ctx.stroke();
+    }
+    
+    for (let y = 0; y <= mapHeight; y += gridSize) {
+      this.ctx.beginPath();
+      this.ctx.moveTo(0, y);
+      this.ctx.lineTo(mapWidth, y);
+      this.ctx.stroke();
+    }
+    
+    // Границы карты
+    this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    this.ctx.lineWidth = 2;
+    this.ctx.strokeRect(0, 0, mapWidth, mapHeight);
   }
 
   /**
@@ -304,7 +330,7 @@ export class GameEngine {
       this.ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
       this.ctx.fill();
       
-      // Обводка при выделении
+      // Обводка при выделении или наведении
       if (node.selected || node.hovered) {
         this.ctx.strokeStyle = '#ffffff';
         this.ctx.lineWidth = 2;
@@ -315,7 +341,7 @@ export class GameEngine {
       
       // Индикатор типа узла
       this.ctx.fillStyle = '#1a1a2e';
-      this.ctx.font = '10px Arial';
+      this.ctx.font = 'bold 10px Arial';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       
@@ -402,11 +428,19 @@ export class GameEngine {
       }
     }
     
-    // Уведомление о завершении
-    if (completed && this.onMissionComplete) {
-      this.onMissionComplete(metrics);
-    } else if (failed && this.onMissionFail) {
-      this.onMissionFail(metrics);
+    // Уведомление о завершении (только один раз при достижении)
+    if (completed && !this.state.missionComplete) {
+      this.state.missionComplete = true;
+      this.setPaused(true);
+      if (this.onMissionComplete) {
+        this.onMissionComplete(metrics);
+      }
+    } else if (failed && !this.state.missionFailed) {
+      this.state.missionFailed = true;
+      this.setPaused(true);
+      if (this.onMissionFail) {
+        this.onMissionFail(metrics);
+      }
     }
   }
 
@@ -418,12 +452,22 @@ export class GameEngine {
     const worldX = (x - this.state.camera.x) / this.state.camera.zoom;
     const worldY = (y - this.state.camera.y) / this.state.camera.zoom;
     
+    // Проверка стоимости
+    const cost = this.config.nodeTypes[type].cost;
+    if (this.state.resources.influence < cost.influence || 
+        this.state.resources.data < cost.data) {
+      console.log('Недостаточно ресурсов!');
+      return null;
+    }
+    
     const node = this.state.network.addNode(worldX, worldY, type);
     
     // Списание стоимости
-    const cost = this.config.nodeTypes[type].cost;
     this.state.resources.influence -= cost.influence;
     this.state.resources.data -= cost.data;
+    
+    // Пересчет дохода после добавления узла
+    this.state.network.calculateIncome();
     
     return node;
   }
