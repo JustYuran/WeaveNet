@@ -182,7 +182,7 @@ export class GameEngine {
     // Восстановление контекста
     this.ctx.restore();
     
-    // Отрисовка тепловых карт в зависимости от режима вида
+    // Отрисовка тепловых карт в зависимости от режима вида (теперь внутри transform)
     this.renderViewOverlay();
   }
 
@@ -204,7 +204,10 @@ export class GameEngine {
    */
   renderCoverageOverlay() {
     for (const node of this.state.network.nodes) {
-      // Зеленая зона покрытия
+      // Зеленая зона покрытия только для игровых узлов
+      const isGameNode = node.type === 'repeater' || node.type === 'server' || node.type === 'stealth_repeater';
+      if (!isGameNode) continue;
+      
       const gradient = this.ctx.createRadialGradient(
         node.x, node.y, 0,
         node.x, node.y, node.radius
@@ -233,6 +236,10 @@ export class GameEngine {
    */
   renderLoadOverlay() {
     for (const node of this.state.network.nodes) {
+      // Нагрузка только для игровых узлов
+      const isGameNode = node.type === 'repeater' || node.type === 'server' || node.type === 'stealth_repeater';
+      if (!isGameNode) continue;
+      
       const loadRatio = node.load / 100;
       
       // Цвет от зеленого (0%) к красному (100%)

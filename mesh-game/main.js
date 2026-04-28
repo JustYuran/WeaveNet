@@ -64,9 +64,6 @@ function initElements() {
   elements.btnRemoveNode = document.getElementById('btn-remove-node');
   
   // Нижняя панель
-  elements.btnSave = document.getElementById('btn-save');
-  elements.btnLoad = document.getElementById('btn-load');
-  elements.btnReset = document.getElementById('btn-reset');
   elements.btnViewDefault = document.getElementById('btn-view-default');
   elements.btnViewCoverage = document.getElementById('btn-view-coverage');
   elements.btnViewLoad = document.getElementById('btn-view-load');
@@ -106,9 +103,11 @@ async function loadMission(missionId = 'mission1') {
  * Обновление UI ресурсов
  */
 function updateResources(data) {
-  elements.influence.textContent = Math.floor(data.resources.energy);
-  elements.data.textContent = Math.floor(data.resources.info);
+  const resources = data.resources || {};
   const income = data.income || {};
+  
+  elements.influence.textContent = Math.floor(resources.energy || 0);
+  elements.data.textContent = Math.floor(resources.info || 0);
   elements.influenceIncome.textContent = `+${(income.energy || 0).toFixed(1)}/сек`;
   elements.dataIncome.textContent = `+${(income.info || 0).toFixed(1)}/сек`;
 }
@@ -189,16 +188,17 @@ function updateSelectedNodeInfo(node) {
   const typeName = nodeConfig.name;
   const energyCost = nodeConfig.energyCost || 0;
   const throughput = nodeConfig.throughput || 0;
+  const radius = node.radius || 0;
+  const status = node.status || 'unknown';
+  const connections = node.connections ? node.connections.length : 0;
   
   elements.nodeDetails.innerHTML = `
     <strong>${typeName}</strong><br>
-    Тип: ${node.type}<br>
-    Статус: ${node.status}<br>
-    Радиус: ${node.radius}м<br>
-    Нагрузка: ${node.load.toFixed(1)}%<br>
-    Потребление: ${energyCost} Э/сек<br>
+    Статус: ${status}<br>
+    Радиус: ${radius}м<br>
     Пропускная способность: ${throughput} инф/сек<br>
-    Связей: ${node.connections.length}
+    Потребление: ${energyCost} Э/сек<br>
+    Связей: ${connections}
   `;
   
   // Показываем кнопку удаления только если узел можно удалить
@@ -323,27 +323,6 @@ function setupEventListeners() {
   elements.btnViewLoad.addEventListener('click', () => {
     renderer.setViewMode('load');
     updateViewButtons(elements.btnViewLoad);
-  });
-  
-  // Сохранение/загрузка
-  elements.btnSave.addEventListener('click', () => {
-    game.save();
-    alert('Игра сохранена!');
-  });
-  
-  elements.btnLoad.addEventListener('click', async () => {
-    const loaded = await game.load();
-    if (loaded) {
-      alert('Игра загружена!');
-    } else {
-      alert('Нет сохраненных данных');
-    }
-  });
-  
-  elements.btnReset.addEventListener('click', () => {
-    if (confirm('Сбросить прогресс и начать заново?')) {
-      game.reset();
-    }
   });
   
   // Удаление узла
