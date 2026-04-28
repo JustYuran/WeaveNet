@@ -108,8 +108,8 @@ async function loadMission(missionId = 'mission1') {
 function updateResources(data) {
   elements.influence.textContent = Math.floor(data.resources.influence);
   elements.data.textContent = Math.floor(data.resources.data);
-  elements.influenceIncome.textContent = `+${data.income.influence.toFixed(1)}/сек`;
-  elements.dataIncome.textContent = `+${data.income.data.toFixed(1)}/сек`;
+  elements.influenceIncome.textContent = `+${(data.income.influence || 0).toFixed(1)}/сек`;
+  elements.dataIncome.textContent = `+${(data.income.data || 0).toFixed(1)}/сек`;
 }
 
 /**
