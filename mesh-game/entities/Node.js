@@ -2,17 +2,27 @@
  * Класс узла сети
  */
 export class Node {
-  constructor(id, x, y, type, config) {
+  constructor(id, x, y, type, config, terrainType = 'plain') {
     this.id = id;
     this.x = x;
     this.y = y;
     this.type = type;
-    this.config = config[type] || config.basic;
+    this.terrainType = terrainType;
+    this.config = config.nodeTypes[type] || config.nodeTypes.basic;
+    this.terrainConfig = config.terrain[terrainType] || config.terrain.plain;
     
-    // Параметры из конфига
-    this.radius = this.config.radius;
+    // Параметры из конфига с модификаторами местности
+    const radiusMod = this.terrainConfig.radiusModifier || 1.0;
+    const costMod = this.terrainConfig.costModifier || 1.0;
+    
+    this.baseRadius = this.config.radius;
+    this.radius = this.baseRadius * radiusMod;
     this.capacity = this.config.capacity;
     this.income = this.config.income;
+    this.baseCost = { 
+      influence: this.config.cost.influence * costMod, 
+      data: this.config.cost.data * costMod 
+    };
     
     // Состояние
     this.load = 0;       // Текущая нагрузка %
@@ -24,6 +34,13 @@ export class Node {
     this.hovered = false;
     this.selected = false;
     this.pulse = 0;
+  }
+
+  /**
+   * Получение эмодзи для узла
+   */
+  getEmoji() {
+    return this.config.emoji || '📱';
   }
 
   /**
@@ -110,6 +127,7 @@ export class Node {
       x: this.x,
       y: this.y,
       type: this.type,
+      terrainType: this.terrainType,
       load: this.load,
       energy: this.energy,
       status: this.status,
@@ -121,7 +139,7 @@ export class Node {
    * Десериализация
    */
   static fromJSON(data, config) {
-    const node = new Node(data.id, data.x, data.y, data.type, config);
+    const node = new Node(data.id, data.x, data.y, data.type, config, data.terrainType || 'plain');
     node.load = data.load;
     node.energy = data.energy;
     node.status = data.status;

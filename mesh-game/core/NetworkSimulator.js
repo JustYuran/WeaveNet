@@ -72,13 +72,14 @@ export class NetworkSimulator {
   /**
    * Добавление узла
    */
-  addNode(x, y, type = 'basic') {
+  addNode(x, y, type = 'basic', terrainType = 'plain') {
     const node = new Node(
       `node_${this.nextNodeId++}`,
       x,
       y,
       type,
-      this.config.nodeTypes
+      this.config,
+      terrainType
     );
     
     this.nodes.push(node);
@@ -429,7 +430,7 @@ export class NetworkSimulator {
     const simulator = new NetworkSimulator(config);
     
     // Восстановление узлов
-    simulator.nodes = data.nodes.map(n => Node.fromJSON(n, config.nodeTypes));
+    simulator.nodes = data.nodes.map(n => Node.fromJSON(n, config));
     simulator.nextNodeId = data.nextNodeId;
     simulator.nextEdgeId = data.nextEdgeId;
     
@@ -437,5 +438,46 @@ export class NetworkSimulator {
     simulator.updateConnections();
     
     return simulator;
+  }
+
+  /**
+   * Определение типа местности по координатам
+   */
+  getTerrainType(x, y) {
+    // Простая процедурная генерация местности
+    // Используем синусоиды для создания "континентов"
+    const scale = 0.01;
+    const mountainThreshold = 0.6;
+    const waterThreshold = -0.3;
+    
+    const noise = Math.sin(x * scale) * Math.cos(y * scale) + 
+                  Math.sin(x * scale * 2.5 + 1) * 0.5 +
+                  Math.cos(y * scale * 1.8 + 2) * 0.3;
+    
+    if (noise > mountainThreshold) return 'mountain';
+    if (noise < waterThreshold) return 'water';
+    return 'plain';
+  }
+
+  /**
+   * Проверка можно ли строить в данной точке
+   */
+  canBuildAt(x, y) {
+    const terrain = this.getTerrainType(x, y);
+    return terrain !== 'water';
+  }
+
+  /**
+   * Получение информации о местности в точке
+   */
+  getTerrainInfo(x, y) {
+    const type = this.getTerrainType(x, y);
+    return {
+      type,
+      name: this.config.terrain[type]?.name || 'Неизвестно',
+      buildable: this.config.terrain[type]?.buildable ?? true,
+      radiusModifier: this.config.terrain[type]?.radiusModifier || 1.0,
+      costModifier: this.config.terrain[type]?.costModifier || 1.0
+    };
   }
 }
