@@ -60,7 +60,7 @@ export class NetworkSimulator {
     const hubY = this.mapHeight / 2;
     this.addNode(hubX, hubY, 'hub');
     
-    // Генерация 50 роутеров случайным образом на карте
+    // Генерация 50 роутеров случайным образом на карте с минимальным расстоянием между ними
     const routerPositions = [];
     for (let i = 0; i < 50; i++) {
       let x, y, valid;
@@ -70,7 +70,16 @@ export class NetworkSimulator {
         y = Math.random() * this.mapHeight;
         // Проверка: не ближе 25 метров от хаба
         const distToHub = Math.hypot(x - hubX, y - hubY);
-        valid = distToHub >= 25;
+        // Проверка: не ближе 0.5 метра от других роутеров
+        let tooCloseToRouter = false;
+        for (const pos of routerPositions) {
+          const distToRouter = Math.hypot(x - pos.x, y - pos.y);
+          if (distToRouter < 0.5) {
+            tooCloseToRouter = true;
+            break;
+          }
+        }
+        valid = distToHub >= 25 && !tooCloseToRouter;
         attempts++;
       } while (!valid && attempts < 100);
       
@@ -95,6 +104,23 @@ export class NetworkSimulator {
           y = router.y + Math.sin(angle) * distance;
           // Проверка границ карты
           valid = x >= 0 && x <= this.mapWidth && y >= 0 && y <= this.mapHeight;
+          // Проверка: не ближе 0.5 метра от других юзеров и роутеров
+          let tooClose = false;
+          for (const pos of userPositions) {
+            const dist = Math.hypot(x - pos.x, y - pos.y);
+            if (dist < 0.5) {
+              tooClose = true;
+              break;
+            }
+          }
+          for (const pos of routerPositions) {
+            const dist = Math.hypot(x - pos.x, y - pos.y);
+            if (dist < 0.5) {
+              tooClose = true;
+              break;
+            }
+          }
+          valid = valid && !tooClose;
           attempts++;
         } while (!valid && attempts < 100);
         
@@ -114,12 +140,29 @@ export class NetworkSimulator {
         y = Math.random() * this.mapHeight;
         // Проверка: не ближе 25 метров от хаба
         const distToHub = Math.hypot(x - hubX, y - hubY);
-        valid = distToHub >= 25;
+        // Проверка: не ближе 0.5 метра от других юзеров и роутеров
+        let tooClose = false;
+        for (const pos of userPositions) {
+          const dist = Math.hypot(x - pos.x, y - pos.y);
+          if (dist < 0.5) {
+            tooClose = true;
+            break;
+          }
+        }
+        for (const pos of routerPositions) {
+          const dist = Math.hypot(x - pos.x, y - pos.y);
+          if (dist < 0.5) {
+            tooClose = true;
+            break;
+          }
+        }
+        valid = distToHub >= 25 && !tooClose;
         attempts++;
       } while (!valid && attempts < 100);
       
       if (valid) {
         this.addNode(x, y, 'home');
+        userPositions.push({ x, y });
       }
     }
     
@@ -554,32 +597,26 @@ export class NetworkSimulator {
   calculateAverageLatency() {
     if (this.nodes.length < 2) return 0;
     
+    // Находим Хаб
+    const hub = this.nodes.find(n => n.type === 'hub');
+    if (!hub) return 0;
+    
     let totalLatency = 0;
     let pathCount = 0;
     
-    // Выборка путей между случайными парами узлов
-    const sampleSize = Math.min(10, this.nodes.length);
+    // Считаем задержку от каждого home узла до хаба
+    const homeNodes = this.nodes.filter(n => n.type === 'home');
     
-    for (let i = 0; i < sampleSize; i++) {
-      for (let j = i + 1; j < sampleSize; j++) {
-        const path = this.pathfinding.findPath(
-          this.nodes[i].id,
-          this.nodes[j].id
-        );
+    for (const home of homeNodes) {
+      const path = this.pathfinding.findPath(home.id, hub.id);
+      
+      if (path && path.length > 1) {
+        // Задержка = количество хопов × базовая задержка (5ms)
+        const hops = path.length - 1;
+        const latency = hops * 5;
         
-        if (path && path.length > 1) {
-          // Задержка = базовая + нагрузка на каждом узле
-          let latency = 10; // Базовая задержка
-          for (const nodeId of path) {
-            const node = this.getNodeById(nodeId);
-            if (node) {
-              latency += (node.load / node.capacity) * 50;
-            }
-          }
-          
-          totalLatency += latency;
-          pathCount++;
-        }
+        totalLatency += latency;
+        pathCount++;
       }
     }
     
