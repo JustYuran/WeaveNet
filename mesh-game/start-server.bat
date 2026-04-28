@@ -2,6 +2,10 @@
 REM Скрипт запуска сервера WeaveNet для Windows
 REM Сохраните как start-server.bat в папке mesh-game
 
+chcp 65001 > nul
+title WeaveNet Server
+cls
+
 echo ========================================
 echo   WeaveNet - Mesh Network Game Server
 echo ========================================

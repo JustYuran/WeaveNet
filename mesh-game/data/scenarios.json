@@ -12,17 +12,17 @@
         {
           "x": 500,
           "y": 400,
-          "type": "user_home"
+          "type": "home"
         },
         {
           "x": 800,
           "y": 200,
-          "type": "user_home"
+          "type": "home"
         },
         {
           "x": 700,
           "y": 600,
-          "type": "user_home"
+          "type": "home"
         }
       ]
     },

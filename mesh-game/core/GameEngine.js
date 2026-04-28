@@ -259,23 +259,29 @@ export class GameEngine {
     const mapWidth = 1000;
     const mapHeight = 800;
     
-    // Рисуем континенты (упрощенно - эллипсы)
-    this.ctx.fillStyle = 'rgba(100, 149, 237, 0.15)';
+    // Процедурная отрисовка местности
+    const gridSize = 20;
     
-    // Континент 1
-    this.ctx.beginPath();
-    this.ctx.ellipse(300, 250, 150, 100, 0, 0, Math.PI * 2);
-    this.ctx.fill();
-    
-    // Континент 2
-    this.ctx.beginPath();
-    this.ctx.ellipse(700, 400, 200, 150, 0.3, 0, Math.PI * 2);
-    this.ctx.fill();
-    
-    // Континент 3
-    this.ctx.beginPath();
-    this.ctx.ellipse(500, 650, 180, 120, -0.2, 0, Math.PI * 2);
-    this.ctx.fill();
+    for (let x = 0; x < mapWidth; x += gridSize) {
+      for (let y = 0; y < mapHeight; y += gridSize) {
+        const terrain = this.state.network.getTerrainInfo(x, y);
+        
+        let color;
+        switch (terrain.type) {
+          case 'mountain':
+            color = 'rgba(90, 74, 58, 0.6)';
+            break;
+          case 'water':
+            color = 'rgba(26, 58, 90, 0.8)';
+            break;
+          default: // plain
+            color = 'rgba(45, 74, 45, 0.4)';
+        }
+        
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, gridSize, gridSize);
+      }
+    }
     
     // Сетка координат
     this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
@@ -308,7 +314,7 @@ export class GameEngine {
   renderNodes() {
     for (const node of this.state.network.nodes) {
       const color = node.getStatusColor();
-      const baseRadius = 8;
+      const baseRadius = 10;
       const radius = node.selected ? baseRadius * 1.3 : baseRadius;
       
       // Свечение
@@ -339,23 +345,13 @@ export class GameEngine {
         this.ctx.stroke();
       }
       
-      // Индикатор типа узла
-      this.ctx.fillStyle = '#1a1a2e';
-      this.ctx.font = 'bold 10px Arial';
+      // Индикатор типа узла (эмодзи из конфига)
+      this.ctx.font = '12px Arial';
       this.ctx.textAlign = 'center';
       this.ctx.textBaseline = 'middle';
       
-      let icon = '';
-      switch (node.type) {
-        case 'relay': icon = 'R'; break;
-        case 'cache': icon = 'C'; break;
-        case 'stealth': icon = 'S'; break;
-        case 'user_home': icon = 'H'; break;
-        case 'user_enthusiast': icon = 'E'; break;
-        default: icon = 'B';
-      }
-      
-      this.ctx.fillText(icon, node.x, node.y);
+      const emoji = node.getEmoji();
+      this.ctx.fillText(emoji, node.x, node.y);
     }
   }
 
@@ -452,15 +448,32 @@ export class GameEngine {
     const worldX = (x - this.state.camera.x) / this.state.camera.zoom;
     const worldY = (y - this.state.camera.y) / this.state.camera.zoom;
     
+    // Проверка можно ли строить в этой точке
+    if (!this.state.network.canBuildAt(worldX, worldY)) {
+      console.log('Нельзя строить на воде!');
+      return null;
+    }
+    
+    // Определение типа местности
+    const terrainType = this.state.network.getTerrainType(worldX, worldY);
+    
     // Проверка стоимости
-    const cost = this.config.nodeTypes[type].cost;
+    const nodeConfig = this.config.nodeTypes[type];
+    const terrainConfig = this.config.terrain[terrainType];
+    const costMultiplier = terrainConfig?.costModifier || 1.0;
+    
+    const cost = {
+      influence: Math.floor(nodeConfig.cost.influence * costMultiplier),
+      data: Math.floor(nodeConfig.cost.data * costMultiplier)
+    };
+    
     if (this.state.resources.influence < cost.influence || 
         this.state.resources.data < cost.data) {
       console.log('Недостаточно ресурсов!');
       return null;
     }
     
-    const node = this.state.network.addNode(worldX, worldY, type);
+    const node = this.state.network.addNode(worldX, worldY, type, terrainType);
     
     // Списание стоимости
     this.state.resources.influence -= cost.influence;
