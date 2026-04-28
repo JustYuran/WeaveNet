@@ -12,7 +12,16 @@ export class Node {
     // Защита от отсутствующего конфига
     if (!config || !config.nodeTypes) {
       console.warn('Config not loaded, using defaults for node', id);
-      this.config = { radius: 100, capacity: 50, income: { influence: 0.5, data: 0.2 }, cost: { influence: 10, data: 0 }, emoji: '📱' };
+      this.config = { 
+        radius: 100, 
+        capacity: 50, 
+        income: { influence: 0.5, data: 0.2 }, 
+        cost: { influence: 10, data: 0 }, 
+        emoji: '📱',
+        color: '#00ff88',
+        shape: 'circle',
+        size: 10
+      };
       this.terrainConfig = { radiusModifier: 1.0, costModifier: 1.0, buildable: true };
     } else {
       this.config = config.nodeTypes[type] || config.nodeTypes.basic;
@@ -31,6 +40,12 @@ export class Node {
       influence: this.config.cost.influence * costMod, 
       data: this.config.cost.data * costMod 
     };
+    
+    // Визуальные параметры из конфига
+    this.color = this.config.color || '#00ff88';
+    this.shape = this.config.shape || 'circle';
+    this.size = this.config.size || 10;
+    this.stealth = this.config.stealth || false;
     
     // Состояние
     this.load = 0;       // Текущая нагрузка %
