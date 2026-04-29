@@ -161,24 +161,27 @@ class HexGrid {
         }
     }
 
-    // Рисование иконки объекта на гексе (без зоны покрытия)
+    // Draw object icon on hex (without coverage zone)
     drawObjectIcon(ctx, x, y, size, object) {
-        // Определение символа и цвета в зависимости от типа объекта
-        let symbol = '📶'; // Роутер
+        // Define symbol and color based on object type
+        let symbol = '📶'; // Router
         let color = '#4a9eff';
-        if (object.type === 'Вышка') {
-            symbol = '🗼'; // Вышка
+        if (object.type === 'Роутер') {
+            symbol = '📶'; // Router
+            color = '#4a9eff';
+        } else if (object.type === 'Вышка') {
+            symbol = '🗼'; // Tower
             color = '#f59e0b';
         }
         
-        // Определение цвета в зависимости от режима
+        // Define color based on mode
         let modeColor = color;
         if (object.mode === 'inactive') {
-            modeColor = '#9ca3af'; // серый для неактивного
+            modeColor = '#9ca3af'; // gray for inactive
         } else if (object.mode === 'economy') {
-            modeColor = '#fbbf24'; // желтый для экономного
+            modeColor = '#fbbf24'; // yellow for economy
         } else if (object.mode === 'active') {
-            modeColor = color; // оригинальный цвет для активного
+            modeColor = color; // original color for active
         }
         
         // Рисуем символ объекта
