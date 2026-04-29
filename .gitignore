@@ -1,85 +1,68 @@
 ```
-# Dependencies
-node_modules/
-
 # Build artifacts
 dist/
 build/
-target/
+*.js.map
+*.min.js
 
-# Logs and temp files
+# Dependencies
+node_modules/
+
+# Editors
+.vscode/
+.idea/
+
+# Logs
 *.log
-*.tmp
 
 # Environment
 .env
 .env.local
 *.env.*
 
-# Editors
-.vscode/
-.idea/
-
-# Python
+# Python (if applicable)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.DS_Store
+Thumbs.db
 
-# Java
-*.class
-*.jar
-*.war
-*.ear
-*.nar
-target/
-
-# C/C++
-*.o
-*.obj
-*.so
-*.a
-*.lib
+# Compiled binary files
+*.exe
 *.dll
+*.so
 *.dylib
-*.exe
 
-# Go
-*.exe
-*.test
-*.prof
-
-# Ruby
-*.gem
-*.rbc
-coverage/
-*.tmc
-
-# Compressed
+# Compressed archives
 *.zip
-*.gz
-*.tar
-*.tgz
-*.bz2
-*.xz
-*.7z
-*.rar
-*.zst
-*.lz4
-*.lzh
-*.cab
-*.arj
-*.rpm
-*.deb
-*.Z
-*.lz
-*.lzo
 *.tar.gz
 *.tar.bz2
 *.tar.xz
-*.tar.zst
+*.7z
+*.rar
+*.gz
 
-# System files
+# OS generated files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
 ```

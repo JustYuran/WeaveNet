@@ -259,6 +259,7 @@ class Game {
                 // [ЗАЧЕМ] Показать информацию о гексе
                 // [PLAN] Показать контекстную панель
                 this.gridRenderer.setSelectedHex(hexId);
+                this.updateBottomPanel(hex);
                 console.log(`[Game] Выбран гекс ${hexId}`);
             }
         } else {
@@ -266,7 +267,60 @@ class Game {
             // [ЗАЧЕМ] Сброс состояния
             // [PLAN] Закрыть контекстные панели
             this.gridRenderer.setSelectedHex(null);
+            this.hideBottomPanel();
         }
+    }
+    
+    /**
+     * Обновление нижней панели с информацией о гексе
+     * @param {Object} hex - Объект гекса
+     */
+    updateBottomPanel(hex) {
+        // [ЧТО] Показываем панель с информацией
+        // [ЗАЧЕМ] Игрок видит детали о выбранном гексе
+        document.getElementById('no-selection-message').classList.add('hidden');
+        document.getElementById('hex-info').classList.remove('hidden');
+        document.getElementById('hex-actions').classList.remove('hidden');
+        
+        // [ЧТО] Заполняем информацию о гексе
+        // [ЗАЧЕМ] Отображение данных
+        document.getElementById('hex-title').textContent = `Гекс #${hex.id}`;
+        document.getElementById('hex-coords').textContent = `(${hex.q}, ${hex.r})`;
+        
+        const terrainNames = {
+            'plains': 'Равнина',
+            'forest': 'Лес',
+            'mountain': 'Горы',
+            'water': 'Вода'
+        };
+        document.getElementById('hex-terrain').textContent = terrainNames[hex.terrain] || hex.terrain;
+        
+        if (hex.building) {
+            document.getElementById('hex-building').textContent = hex.building.name;
+            document.getElementById('btn-demolish').classList.remove('hidden');
+        } else {
+            document.getElementById('hex-building').textContent = 'Нет';
+            document.getElementById('btn-demolish').classList.add('hidden');
+        }
+        
+        // [ЧТО] Считаем пользователей на гексе
+        // [ЗАЧЕМ] Показать активность
+        const usersOnHex = this.userManager ? this.userManager.getUsersOnHex(hex.id).length : 0;
+        document.getElementById('hex-users').textContent = usersOnHex;
+        
+        // [ЧТО] Считаем соседей
+        // [ЗАЧЕМ] Показать связи
+        const neighborCount = Object.keys(hex.neighbors).filter(k => hex.neighbors[k] !== null).length;
+        document.getElementById('hex-neighbors').textContent = neighborCount;
+    }
+    
+    /**
+     * Скрытие нижней панели
+     */
+    hideBottomPanel() {
+        document.getElementById('no-selection-message').classList.remove('hidden');
+        document.getElementById('hex-info').classList.add('hidden');
+        document.getElementById('hex-actions').classList.add('hidden');
     }
     
     /**
