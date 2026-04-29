@@ -12,6 +12,33 @@
 .vscode/
 .idea/
 
-# Original rules preserved
-*.log
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+coverage/
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+
+# Dependencies
+.venv/
+venv/
+.env/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+.tox/
+.coverage
+nosetests.xml
 ```
