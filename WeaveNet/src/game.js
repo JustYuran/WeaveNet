@@ -120,7 +120,7 @@ class HexGrid {
         this.map.forEach((hex, key) => {
             if (hex.object) {
                 const center = this.hexToScreen(hex.q, hex.r);
-                this.drawObjectIcon(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+                this.drawObject(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
             }
         });
         
