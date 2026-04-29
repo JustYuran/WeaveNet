@@ -299,8 +299,11 @@ class HexGrid {
         // Для каждой зоны рисуем контур, но пропускаем дуги внутри других зон
         coverageZones.forEach((zone, index) => {
             ctx.save();
-            ctx.strokeStyle = `${zone.color}80`; // 50% непрозрачности для контура
-            ctx.lineWidth = 2;
+            // Добавляем свечение для пунктирной линии
+            ctx.shadowColor = zone.color;
+            ctx.shadowBlur = 10;
+            ctx.strokeStyle = `${zone.color}FF`; // Полная непрозрачность для яркости
+            ctx.lineWidth = 3;
             ctx.setLineDash([5, 5]); // Пунктирная линия
             
             // Проверяем каждую точку окружности на попадание в другие зоны
