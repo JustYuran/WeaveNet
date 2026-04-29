@@ -31,8 +31,8 @@ class CameraManager {
         // [ЗАЧЕМ] Приближение/отдаление карты
         // [PLAN] Ограничить мин/макс зум
         this.zoom = 1;
-        this.minZoom = 0.3;
-        this.maxZoom = 3;
+        this.minZoom = 0.05;
+        this.maxZoom = 1.5;
         this.zoomSpeed = 0.1;
         
         // [ЧТО] Состояние перетаскивания
