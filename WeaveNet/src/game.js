@@ -87,6 +87,10 @@ class HexGrid {
     }
 
     // Отрисовка сетки
+    // [ЧТО] Метод отрисовки всей сетки с объектами и зонами покрытия.
+    // [ЗАЧЕМ] Обеспечивает послойную отрисовку: гексы -> зоны покрытия (контуром) -> объекты.
+    //          Такой порядок не перекрывает гексы полупрозрачными зонами.
+    // [PLAN] 2.3.1 Градиентное свечение, 2.3.2 Наложение зон
     draw(ctx) {
         ctx.save();
         
@@ -108,11 +112,14 @@ class HexGrid {
             }
         });
         
-        // Затем рисуем зоны покрытия всех объектов
+        // [ЧТО] Отрисовка зон покрытия в режиме 'load' (только контуры).
+        // [ЗАЧЕМ] Контурный режим не перекрывает гексы и позволяет видеть карту под зонами покрытия.
+        //          Решает проблему видимости при множественных вышках/роутерах.
+        // [PLAN] 2.3.1 Градиентное свечение
         this.map.forEach((hex, key) => {
             if (hex.object) {
                 const center = this.hexToScreen(hex.q, hex.r);
-                this.drawCoverage(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+                this.drawCoverage(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object, 'load');
             }
         });
         
@@ -199,8 +206,11 @@ class HexGrid {
         ctx.fillText(symbol, x, y);
     }
 
-    // Рисование зоны покрытия объекта
-    drawCoverage(ctx, x, y, size, object) {
+    // [ЧТО] Рисование зоны покрытия объекта с разными режимами видимости.
+    // [ЗАЧЕМ] Позволяет игроку видеть зону покрытия без перекрытия гексов и объектов.
+    //          Режим "нагрузка" показывает только контур, не закрывая обзор.
+    // [PLAN] 2.3.1 Градиентное свечение, 2.3.2 Наложение зон
+    drawCoverage(ctx, x, y, size, object, coverageMode = 'main') {
         // Рисуем зону покрытия только для активных режимов (не для заблокированных и неактивных)
         if (object.mode !== 'active' && object.mode !== 'economy') {
             return;
@@ -221,21 +231,37 @@ class HexGrid {
         const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
         const rangePixels = object.range * size * rangeMultiplier;
         
-        // Увеличиваем видимость зоны покрытия
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
-        gradient.addColorStop(0, `${modeColor}80`); // 50% прозрачности (было 25%)
-        gradient.addColorStop(0.5, `${modeColor}40`); // 25% прозрачности на середине
-        gradient.addColorStop(1, `${modeColor}20`); // 12% прозрачности по краям (было 0%)
-        
-        ctx.beginPath();
-        ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        
-        // Добавляем обводку для лучшей видимости
-        ctx.strokeStyle = `${modeColor}60`;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        // [ЧТО] Два режима отображения зоны покрытия: 'main' (основной) и 'load' (нагрузка/контур).
+        // [ЗАЧЕМ] Режим 'load' показывает только контур без заполнения, чтобы не перекрывать гексы.
+        //          Игрок может переключаться между режимами для лучшего обзора карты.
+        // [PLAN] 2.3.1 Градиентное свечение
+        if (coverageMode === 'load') {
+            // Режим нагрузки: только контурная обводка без градиентного заполнения
+            ctx.beginPath();
+            ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
+            ctx.strokeStyle = `${modeColor}80`; // 50% непрозрачности для контура
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]); // Пунктирная линия для режима нагрузки
+            ctx.stroke();
+            ctx.setLineDash([]); // Сброс пунктира
+        } else {
+            // Основной режим: градиентное заполнение с повышенной прозрачностью
+            // Увеличиваем прозрачность чтобы не загораживать гексы
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
+            gradient.addColorStop(0, `${modeColor}30`); // 18% прозрачности в центре
+            gradient.addColorStop(0.5, `${modeColor}15`); // 9% прозрачности на середине
+            gradient.addColorStop(1, `${modeColor}08`); // 5% прозрачности по краям
+            
+            ctx.beginPath();
+            ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+            
+            // Добавляем обводку для лучшей видимости
+            ctx.strokeStyle = `${modeColor}40`;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
     }
 
     // Проверка возможности размещения
