@@ -94,7 +94,7 @@
         
         #canvas-container {
             width: 100%;
-            height: calc(100% - 180px);
+            height: calc(100% - 140px);
             overflow: hidden;
         }
         
@@ -107,52 +107,57 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 160px;
+            height: 80px;
             background: rgba(0, 0, 0, 0.9);
             border-top: 2px solid #4a9eff;
-            padding: 15px 20px;
+            padding: 10px 20px;
             z-index: 100;
             color: white;
             display: flex;
             gap: 20px;
+            align-items: center;
         }
         
         #hex-info {
             flex: 1;
             display: flex;
-            flex-direction: column;
-            gap: 8px;
+            flex-direction: row;
+            gap: 20px;
+            align-items: center;
         }
         
         .hex-info-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             color: #4a9eff;
-            margin-bottom: 5px;
+            white-space: nowrap;
         }
         
         .hex-info-row {
             display: flex;
             gap: 15px;
-            font-size: 14px;
+            font-size: 13px;
+            align-items: center;
         }
         
         .hex-info-label {
             color: #aaa;
-            min-width: 120px;
+            white-space: nowrap;
         }
         
         .hex-info-value {
             color: #fff;
             font-weight: 500;
+            min-width: 40px;
         }
         
         #hex-actions {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 10px;
             justify-content: center;
-            min-width: 200px;
+            align-items: center;
+            min-width: 150px;
         }
         
         .action-btn {

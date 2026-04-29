@@ -347,25 +347,25 @@ class Game {
     
     /**
      * Обработка движения мыши
-     * [ЧТО] Подсветка гекса под курсором
-     * [ЗАЧЕМ] Визуальная обратная связь
+     * [ЧТО] Подсветка гекса под курсором и обновление призрака постройки
+     * [ЗАЧЕМ] Визуальная обратная связь и предпросмотр строительства
      * [PLAN] Tooltip с информацией о гексе
      */
     handleMouseMove(e) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        
+
         // [ЧТО] Находим гекс под курсором
         // [ЗАЧЕМ] Для подсветки и возможного взаимодействия
         // [PLAN] Оптимизировать проверку
         const hexId = this.gridRenderer.getHexAtPosition(mouseX, mouseY);
-        
+
         // [ЧТО] Устанавливаем hovered гекс в рендерере
         // [ЗАЧЕМ] Для отрисовки hover эффекта
         // [PLAN] Использовать для tooltip
         this.gridRenderer.setHoveredHex(hexId);
-        
+
         // [ЧТО] Меняем курсор если над гексом
         // [ЗАЧЕМ] Визуальная подсказка о возможности взаимодействия
         // [PLAN] Разные курсоры для разных режимов
@@ -373,6 +373,17 @@ class Game {
             this.canvas.style.cursor = 'pointer';
         } else {
             this.canvas.style.cursor = 'default';
+        }
+
+        // [ЧТО] Обновляем нижнюю панель если гекс выбран
+        // [ЗАЧЕМ] Динамическое обновление информации (таймер, пользователи)
+        // [PLAN] Оптимизировать чтобы не обновлять каждый кадр без нужды
+        const selectedHexId = this.gridRenderer.getSelectedHex();
+        if (selectedHexId !== null) {
+            const hex = this.hexGrid.getHexById(selectedHexId);
+            if (hex) {
+                this.updateBottomPanel(hex);
+            }
         }
     }
     
