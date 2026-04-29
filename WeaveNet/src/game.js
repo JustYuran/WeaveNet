@@ -112,16 +112,11 @@ class HexGrid {
             }
         });
         
-        // [ЧТО] Отрисовка зон покрытия в режиме 'load' (только контуры).
-        // [ЗАЧЕМ] Контурный режим не перекрывает гексы и позволяет видеть карту под зонами покрытия.
-        //          Решает проблему видимости при множественных вышках/роутерах.
-        // [PLAN] 2.3.1 Градиентное свечение
-        this.map.forEach((hex, key) => {
-            if (hex.object) {
-                const center = this.hexToScreen(hex.q, hex.r);
-                this.drawCoverage(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object, 'load');
-            }
-        });
+        // [ЧТО] Отрисовка зон покрытия в режиме 'load' (только контуры) с объединением пересекающихся зон.
+        // [ЗАЧЕМ] При пересечении зон пунктирная линия исчезает в месте пересечения — зоны визуально объединяются.
+        //          Это создаёт эффект единой зоны покрытия вместо нескольких отдельных кругов.
+        // [PLAN] 2.3.1 Градиентное свечение, 2.3.2 Наложение зон
+        this.drawCoverageMerged(ctx, 'load');
         
         // Затем рисуем все объекты поверх зон покрытия
         this.map.forEach((hex, key) => {
@@ -262,6 +257,100 @@ class HexGrid {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
+    }
+
+    // [ЧТО] Отрисовка объединённых зон покрытия с удалением пунктира в местах пересечения.
+    // [ЗАЧЕМ] При пересечении зон покрытия пунктирная линия исчезает в месте пересечения,
+    //          создавая эффект единой объединённой зоны вместо нескольких отдельных кругов.
+    // [PLAN] 2.3.2 Наложение зон
+    drawCoverageMerged(ctx, coverageMode = 'load') {
+        // Собираем все активные объекты с зонами покрытия
+        const coverageZones = [];
+        this.map.forEach((hex, key) => {
+            if (hex.object && (hex.object.mode === 'active' || hex.object.mode === 'economy')) {
+                const center = this.hexToScreen(hex.q, hex.r);
+                
+                // Определение цвета
+                let color = '#4a9eff';
+                if (hex.object.type === 'Вышка') {
+                    color = '#f59e0b';
+                }
+                if (hex.object.mode === 'economy') {
+                    color = '#fbbf24';
+                }
+                
+                const rangeMultiplier = hex.object.mode === 'economy' ? 0.5 : 1.0;
+                const rangePixels = hex.object.range * this.hexSize * this.zoom * rangeMultiplier;
+                
+                coverageZones.push({
+                    x: center.x,
+                    y: center.y,
+                    radius: rangePixels,
+                    color: color
+                });
+            }
+        });
+        
+        // Если нет зон покрытия, выходим
+        if (coverageZones.length === 0) {
+            return;
+        }
+        
+        // Для каждой зоны рисуем контур, но пропускаем дуги внутри других зон
+        coverageZones.forEach((zone, index) => {
+            ctx.save();
+            ctx.strokeStyle = `${zone.color}80`; // 50% непрозрачности для контура
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]); // Пунктирная линия
+            
+            // Проверяем каждую точку окружности на попадание в другие зоны
+            const step = 2; // Шаг проверки в градусах (меньше = точнее, но медленнее)
+            let isDrawing = false;
+            let startAngle = 0;
+            
+            for (let angle = 0; angle <= 360; angle += step) {
+                const rad = angle * Math.PI / 180;
+                const testX = zone.x + zone.radius * Math.cos(rad);
+                const testY = zone.y + zone.radius * Math.sin(rad);
+                
+                // Проверяем, находится ли точка внутри другой зоны
+                let isInOtherZone = false;
+                for (let j = 0; j < coverageZones.length; j++) {
+                    if (j === index) continue;
+                    const other = coverageZones[j];
+                    const dist = Math.sqrt((testX - other.x) ** 2 + (testY - other.y) ** 2);
+                    if (dist < other.radius) {
+                        isInOtherZone = true;
+                        break;
+                    }
+                }
+                
+                if (!isInOtherZone) {
+                    if (!isDrawing) {
+                        // Начинаем новую дугу
+                        ctx.beginPath();
+                        ctx.moveTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
+                        isDrawing = true;
+                    } else {
+                        // Продолжаем дугу
+                        ctx.lineTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
+                    }
+                } else {
+                    if (isDrawing) {
+                        // Заканчиваем дугу
+                        ctx.stroke();
+                        isDrawing = false;
+                    }
+                }
+            }
+            
+            // Если остались незавершённые линии, завершаем их
+            if (isDrawing) {
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        });
     }
 
     // Проверка возможности размещения
