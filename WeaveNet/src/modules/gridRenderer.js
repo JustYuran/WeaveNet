@@ -118,6 +118,13 @@ class GridRenderer {
         if (this.buildingTypeToPlace && this.selectedHexId !== null) {
             this.drawBuildCursor();
         }
+        
+        // [ЧТО] Отрисовка пользователей на гексах
+        // [ЗАЧЕМ] Показываем активных пользователей на карте
+        // [PLAN] Добавить анимацию движения
+        if (this.userManager) {
+            this.drawUsers();
+        }
     }
     
     /**
@@ -300,6 +307,75 @@ class GridRenderer {
         }
         
         return null;
+    }
+    
+    /**
+     * Отрисовка пользователей на гексах
+     * [ЧТО] Рисует кружки пользователей в центре каждого гекса
+     * [ЗАЧЕМ] Визуализация активных пользователей на карте
+     * [PLAN] Добавить анимацию движения, разные типы пользователей
+     */
+    drawUsers() {
+        const users = this.userManager.getAllUsers();
+        
+        // [ЧТО] Группируем пользователей по гексам для отрисовки
+        // [ЗАЧЕМ] Эффективная отрисовка всех пользователей
+        // [PLAN] Оптимизировать для большого количества пользователей
+        const hexUserMap = {};
+        
+        users.forEach(user => {
+            if (!hexUserMap[user.hexId]) {
+                hexUserMap[user.hexId] = [];
+            }
+            hexUserMap[user.hexId].push(user);
+        });
+        
+        // [ЧТО] Отрисовываем пользователей на каждом гексе
+        // [ЗАЧЕМ] Показываем всех пользователей на карте
+        // [PLAN] Добавить layout для красивого расположения (сетка, круг)
+        Object.keys(hexUserMap).forEach(hexId => {
+            const hex = this.hexGrid.getHexById(parseInt(hexId));
+            if (!hex) return;
+            
+            const usersOnHex = hexUserMap[hexId];
+            const userCount = usersOnHex.length;
+            
+            // [ЧТО] Вычисляем размер кружка пользователя
+            // [ЗАЧЕМ] Чтобы все помещались на гексе
+            // [PLAN] Динамический размер в зависимости от количества
+            const baseSize = this.hexGrid.getHexSize() * 0.25;
+            const maxPerRow = Math.ceil(Math.sqrt(userCount));
+            const userSize = Math.min(baseSize, (this.hexGrid.getHexWidth() * 0.8) / maxPerRow);
+            
+            // [ЧТО] Распределяем пользователей сеткой на гексе
+            // [ЗАЧЕМ] Равномерное расположение
+            // [PLAN] Использовать гексагональную упаковку для красоты
+            usersOnHex.forEach((user, index) => {
+                // Простая сетка 3x3 максимум
+                const row = Math.floor(index / 3);
+                const col = index % 3;
+                
+                const offsetX = (col - 1) * userSize * 1.2;
+                const offsetY = (row - 1) * userSize * 1.2;
+                
+                // [ЧТО] Рисуем кружок пользователя
+                // [ЗАЧЕМ] Визуальное представление пользователя
+                // [PLAN] Добавить аватарки или иконки
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    hex.x + offsetX,
+                    hex.y + offsetY,
+                    userSize * 0.8,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fillStyle = user.color;
+                this.ctx.fill();
+                this.ctx.strokeStyle = 'white';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            });
+        });
     }
     
     /**
