@@ -229,27 +229,6 @@ class HexGrid {
         ctx.fill();
     }
 
-    // Старый метод (оставлен для совместимости)
-    drawObject(ctx, x, y, size, object) {
-        this.drawObjectIcon(ctx, x, y, size, object);
-        this.drawCoverage(ctx, x, y, size, object);
-        
-        // Рисуем зону покрытия для активных режимов
-        if (object.mode === 'active' || object.mode === 'economy') {
-            const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
-            const rangePixels = object.range * size * rangeMultiplier;
-            
-            const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
-            gradient.addColorStop(0, `${modeColor}40`); // 25% прозрачности
-            gradient.addColorStop(1, `${modeColor}00`); // полностью прозрачный
-            
-            ctx.beginPath();
-            ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
-            ctx.fillStyle = gradient;
-            ctx.fill();
-        }
-    }
-
     // Проверка возможности размещения
     canPlace(q, r) {
         const key = this.getHexKey(q, r);
