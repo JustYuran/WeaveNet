@@ -187,6 +187,8 @@ class HexGrid {
             modeColor = '#fbbf24'; // yellow for economy
         } else if (object.mode === 'active') {
             modeColor = color; // original color for active
+        } else if (object.mode === 'blocked') {
+            modeColor = '#ef4444'; // red for blocked
         }
         
         // Рисуем символ объекта
@@ -199,7 +201,7 @@ class HexGrid {
 
     // Рисование зоны покрытия объекта
     drawCoverage(ctx, x, y, size, object) {
-        // Рисуем зону покрытия только для активных режимов
+        // Рисуем зону покрытия только для активных режимов (не для заблокированных и неактивных)
         if (object.mode !== 'active' && object.mode !== 'economy') {
             return;
         }
@@ -429,7 +431,8 @@ class Game {
             const modeNames = {
                 'inactive': '⚪ Не активный',
                 'economy': '🟡 Экономный',
-                'active': '🟢 Активный'
+                'active': '🟢 Активный',
+                'blocked': '🔴 Блокировка'
             };
             info += `<div class="panel-row"><span>Объект:</span><span>${hex.object.type}</span></div>`;
             info += `<div class="panel-row"><span>Режим:</span><span>${modeNames[hex.object.mode] || hex.object.mode}</span></div>`;
@@ -491,7 +494,7 @@ class Game {
         const [q, r] = key.split(',').map(Number);
         const hex = this.grid.getHex(q, r);
         if (hex && hex.object) {
-            const modes = ['inactive', 'economy', 'active']; // Не активный, Экономный, Активный
+            const modes = ['inactive', 'economy', 'active', 'blocked']; // Не активный, Экономный, Активный, Блокировка
             const currentIndex = modes.indexOf(hex.object.mode);
             hex.object.mode = modes[(currentIndex + 1) % modes.length];
             this.showContextPanel(hex);
@@ -540,20 +543,22 @@ class Game {
         let infoProduction = 0;
         
         this.grid.map.forEach(hex => {
-            // Энергию потребляют только активные и экономные режимы
-            if (hex.object && hex.object.mode !== 'inactive') {
+            // Энергию потребляют только активные режимы (не заблокированные и не неактивные)
+            if (hex.object && hex.object.mode === 'active') {
                 energyConsumption += hex.object.energyCost;
-                
-                // Бонус к информации за активные объекты
-                if (hex.object.mode === 'economy') infoProduction += 0.5;
-                if (hex.object.mode === 'active') infoProduction += 1.0;
+                infoProduction += 1.0;
+            } else if (hex.object && hex.object.mode === 'economy') {
+                energyConsumption += hex.object.energyCost * 0.5; // Экономный режим потребляет меньше
+                infoProduction += 0.5;
             }
+            // blocked и inactive режимы не потребляют энергию и не производят информацию
         });
         
         // Пассивная генерация энергии (стартовый прирост + бонус от объектов)
         const baseEnergyProduction = 10; // Стартовый прирост энергии
-        const activeObjects = Array.from(this.grid.map.values()).filter(h => h.object && h.object.mode !== 'inactive').length;
-        const energyProduction = baseEnergyProduction + Math.floor(activeObjects / 10);
+        const activeObjects = Array.from(this.grid.map.values()).filter(h => h.object && h.object.mode === 'active').length;
+        const economyObjects = Array.from(this.grid.map.values()).filter(h => h.object && h.object.mode === 'economy').length;
+        const energyProduction = baseEnergyProduction + Math.floor((activeObjects + economyObjects * 0.5) / 10);
         
         this.energyRate = energyProduction - energyConsumption;
         this.infoRate = infoProduction;
