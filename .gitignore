@@ -7,45 +7,55 @@ dist/
 build/
 target/
 
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.venv/
-.ENV
-.pipenv
-.pytest_cache/
-.mypy_cache/
 
-# Logs
-*.log
+# Java
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+target/
 
-# Environment variables
-.env
-.env.local
-.env.*
-.env~*
+# C/C++
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.dylib
+*.exe
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Go
+*.exe
+*.test
+*.prof
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Coverage
+# Ruby
+*.gem
+*.rbc
 coverage/
-htmlcov/
-.coverage
+*.tmc
 
-# Compressed files
+# Compressed
 *.zip
 *.gz
 *.tar
@@ -68,4 +78,8 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+
+# System files
+.DS_Store
+Thumbs.db
 ```
