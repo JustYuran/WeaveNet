@@ -202,26 +202,27 @@
         }
         .btn-close:hover { background: rgba(255, 255, 255, 0.4); }
         
-        /* [ЧТО] Улучшенные стили для tooltip с поддержкой длинного текста и переноса. */
-        /* [ЗАЧЕМ] Предотвращает выход текста подсказок за пределы экрана и улучшает читаемость. */
-        /* [ERROR] Ошибка 1 - наложение интерфейса */
+        /* [ЧТО] Улучшенные стили для tooltip с поддержкой длинного текста, переноса и ограничением позиции. */
+        /* [ЗАЧЕМ] Предотвращает выход текста подсказок за пределы экрана, улучшает читаемость и позиционирование. */
+        /* [ERROR] Ошибка 1 - наложение интерфейса (всплывающие окна показываются сверху за пределами окна браузера) */
         .tooltip {
             position: relative;
+            display: inline-block;
         }
         
         .tooltip::after {
             content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
+            position: fixed;
             left: 50%;
-            transform: translateX(-50%);
+            top: 0;
+            transform: translate(-50%, -100%);
             background: rgba(0, 0, 0, 0.98);
             color: white;
             padding: 10px 14px;
             border-radius: 6px;
             font-size: 12px;
             line-height: 1.4;
-            max-width: 280px;
+            max-width: min(280px, calc(100vw - 20px));
             width: max-content;
             white-space: normal;
             word-wrap: break-word;
@@ -229,37 +230,39 @@
             opacity: 0;
             visibility: hidden;
             transition: all 0.2s ease;
-            z-index: 1001;
+            z-index: 10000;
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.7);
             border: 1px solid #4a9eff;
             text-align: center;
+            pointer-events: none;
         }
         
         .tooltip:hover::after {
             opacity: 1;
             visibility: visible;
-            bottom: calc(100% + 10px);
+            top: -10px;
         }
         
         /* Стрелочка для tooltip */
         .tooltip::before {
             content: '';
-            position: absolute;
-            bottom: 100%;
+            position: fixed;
             left: 50%;
+            top: 0;
             transform: translateX(-50%);
             border: 7px solid transparent;
             border-top-color: #4a9eff;
             opacity: 0;
             visibility: hidden;
             transition: all 0.2s ease;
-            z-index: 1001;
+            z-index: 10000;
+            pointer-events: none;
         }
         
         .tooltip:hover::before {
             opacity: 1;
             visibility: visible;
-            bottom: calc(100% - 1px);
+            top: -1px;
         }
     </style>
 </head>
