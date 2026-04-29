@@ -1,4 +1,0 @@
-Ошибка №1 - статут: не выполенено.
-После запуска игры в консоли:
-game.js:172 Uncaught SyntaxError: Unexpected token '{' (at game.js:172:41)
-inject.js:84 WARNING:StorageManager: settings timeout, using defaults
