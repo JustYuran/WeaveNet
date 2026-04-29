@@ -555,16 +555,26 @@ class Game {
             info += `<div class="panel-row"><span>Объект:</span><span>${hex.object.type}</span></div>`;
             info += `<div class="panel-row"><span>Режим:</span><span>${modeNames[hex.object.mode] || hex.object.mode}</span></div>`;
             
-            // Кнопки управления
+            // Кнопки управления с подсказками
+            const modeHints = {
+                'inactive': 'Включить здание (начнёт потреблять энергию)',
+                'economy': 'Полная мощность (радиус 100%, стандартное потребление)',
+                'active': 'Экономный режим (радиус 50%, низкое потребление)',
+                'blocked': 'Разблокировать здание'
+            };
+            const demolishHint = hex.object.type === 'Роутер' 
+                ? 'Снести роутер (вернётся 15 информации)' 
+                : 'Снести вышку (вернётся 50 информации)';
+            
             buttons.innerHTML = `
-                <button class="panel-btn btn-mode" onclick="game.toggleMode('${hex.q},${hex.r}')">Сменить режим</button>
-                <button class="panel-btn btn-demolish" onclick="game.demolish('${hex.q},${hex.r}')">Снести</button>
+                <button class="panel-btn btn-mode tooltip" data-tooltip="${modeHints[hex.object.mode]}" onclick="game.toggleMode('${hex.q},${hex.r}')">Сменить режим</button>
+                <button class="panel-btn btn-demolish tooltip" data-tooltip="${demolishHint}" onclick="game.demolish('${hex.q},${hex.r}')">Снести</button>
             `;
         } else if (!hex.obstacle) {
-            // Кнопки постройки
+            // Кнопки постройки с подсказками
             buttons.innerHTML = `
-                <button class="panel-btn btn-mode" onclick="game.buildRouter('${hex.q},${hex.r}')">Роутер (30)</button>
-                <button class="panel-btn btn-mode" onclick="game.buildTower('${hex.q},${hex.r}')">Вышка (100)</button>
+                <button class="panel-btn btn-mode tooltip" data-tooltip="Базовый узел: радиус 5, потребление 2 энергии/с" onclick="game.buildRouter('${hex.q},${hex.r}')">Роутер (30)</button>
+                <button class="panel-btn btn-mode tooltip" data-tooltip="Мощный узел: радиус 10, потребление 8 энергии/с" onclick="game.buildTower('${hex.q},${hex.r}')">Вышка (100)</button>
             `;
         }
         
