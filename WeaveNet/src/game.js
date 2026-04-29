@@ -100,54 +100,79 @@ class HexGrid {
     
     // [ЧТО] Проверка принадлежности гекса к форме "Россия".
     // [ЗАЧЕМ] Создаёт очертания карты, визуально похожие на территорию России с узнаваемыми географическими элементами.
-    // [ERROR] Ошибка 2 - карта должна быть похожа на Россию. Улучшена форма с добавлением Крыма, Камчатки и Сахалина.
+    // [ERROR] Ошибка 2 - карта должна быть похожа на Россию. Полностью переделана генерация для детализированной формы.
     // [PLAN] 1.4. Схожесть карты на реальную карту
     isInRussiaShape(q, r, width, height) {
-        // Улучшенная модель формы России с более узнаваемыми очертаниями
+        // Детализированная модель формы России с улучшенными очертаниями и регионами
         // Россия вытянута с запада на восток (горизонтально) и имеет характерные изгибы
         
         // Нормализованные координаты (-1 до 1)
         const normQ = q / width;
         const normR = r / height;
         
-        // Западная часть (Европа) - более широкая, с Калининградским выступом и Крымом
-        if (normQ < -0.4) {
-            // Европейская часть: широкая, с небольшим расширением на севере (Кольский полуостров)
-            const maxR = 0.65 + Math.sin((normQ + 0.4) * Math.PI) * 0.15;
-            // Добавляем Крым в юго-западной части (характерный полуостров на юге)
-            if (normQ > -0.7 && normQ < -0.5 && normR < -0.3 && normR > -0.6) {
-                return true; // Крым всегда включаем
+        // Западная часть (Европа) - более широкая, с Калининградом, Крымом и Кольским полуостровом
+        if (normQ < -0.5) {
+            // Европейская часть: широкая, с расширением на севере (Кольский полуостров)
+            const maxR = 0.7 + Math.sin((normQ + 0.5) * Math.PI) * 0.12;
+            
+            // Калининградский выступ (крайний запад)
+            if (normQ < -0.85 && normR > -0.1 && normR < 0.2) {
+                return true;
             }
+            
+            // Крым в юго-западной части (характерный полуостров на юге)
+            if (normQ > -0.75 && normQ < -0.55 && normR < -0.35 && normR > -0.65) {
+                return true;
+            }
+            
             return Math.abs(normR) < maxR;
         }
         
-        // Центральная часть (Урал и Западная Сибирь) - переходная зона
-        if (normQ >= -0.4 && normQ < -0.1) {
-            // Сужение после европейской части, затем расширение
-            const maxR = 0.55 + Math.sin((normQ + 0.4) * Math.PI * 2) * 0.1;
+        // Центральная часть (Урал и Западная Сибирь) - переходная зона с расширением
+        if (normQ >= -0.5 && normQ < -0.2) {
+            // Расширение в центре (Западная Сибирь)
+            const maxR = 0.6 + Math.sin((normQ + 0.5) * Math.PI * 1.5) * 0.15;
             return Math.abs(normR) < maxR;
         }
         
-        // Сибирь - длинная вытянутая часть с северным побережьем
-        if (normQ >= -0.1 && normQ < 0.4) {
+        // Сибирь - длинная вытянутая часть с северным побережьем и Байкалом
+        if (normQ >= -0.2 && normQ < 0.3) {
             // Северное побережье более выражено (положительный R), юг более прямой
-            const northLimit = 0.5 + Math.sin((normQ + 0.1) * Math.PI) * 0.2;
-            const southLimit = 0.35 + Math.cos((normQ + 0.1) * Math.PI) * 0.1;
+            const northLimit = 0.55 + Math.sin((normQ + 0.2) * Math.PI) * 0.18;
+            const southLimit = 0.4 + Math.cos((normQ + 0.2) * Math.PI) * 0.12;
+            
+            // Байкал (озеро в южной Сибири)
+            if (normQ > 0.0 && normQ < 0.15 && normR < -0.15 && normR > -0.35) {
+                return true;
+            }
+            
             return normR < northLimit && normR > -southLimit;
         }
         
         // Восточная Сибирь и Дальний Восток - сужается с изгибом на юг
-        if (normQ >= 0.4 && normQ < 0.7) {
+        if (normQ >= 0.3 && normQ < 0.65) {
             // Характерный изгиб на юг (Амур, Приморье)
-            const northLimit = 0.45 - (normQ - 0.4) * 0.3;
-            const southLimit = 0.3 + (normQ - 0.4) * 0.5; // Смещение на юг
+            const northLimit = 0.5 - (normQ - 0.3) * 0.35;
+            const southLimit = 0.35 + (normQ - 0.3) * 0.6; // Смещение на юг
+            
+            // Сахалин (остров рядом с восточным побережьем)
+            if (normQ > 0.5 && normQ < 0.65 && normR < -0.15 && normR > -0.4) {
+                return true;
+            }
+            
             return normR < northLimit && normR > -southLimit;
         }
         
-        // Дальневосточный конец (Камчатка, Чукотка) - узкий полуостров
-        if (normQ >= 0.7) {
-            // Очень узкая часть с окончанием
-            const maxR = 0.25 - (normQ - 0.7) * 0.5;
+        // Дальневосточный конец (Камчатка, Чукотка) - узкий полуостров с Камчаткой
+        if (normQ >= 0.65) {
+            // Узкая часть с окончанием, затем расширение для Камчатки
+            const maxR = 0.3 - (normQ - 0.65) * 0.4;
+            
+            // Камчатка (полуостров на востоке)
+            if (normQ > 0.8 && normQ < 0.95 && normR > 0.05 && normR < 0.35) {
+                return true;
+            }
+            
             if (maxR <= 0) return false;
             return Math.abs(normR) < maxR;
         }
@@ -1035,16 +1060,27 @@ class Game {
         const minR = Math.floor(centerY - viewHeight / 2 - margin);
         const maxR = Math.ceil(centerY + viewHeight / 2 + margin);
         
-        // Рисуем только видимые гексы
+        // [ЧТО] Расширенные границы видимой области для корректной отрисовки при большом зуме.
+        // [ЗАЧЕМ] При сильном приближении (зум > 1) гексы могут оказаться за пределами рассчитанной области,
+        //          что приводит к их исчезновению. Увеличиваем запас в зависимости от зума.
+        // [ERROR] Ошибка 1 - при приблизив карту и начав её двигать карта пропадает
+        const zoomMargin = margin * Math.max(1, this.grid.zoom * 2);
+        const extendedMinQ = Math.floor(centerX - viewWidth / 2 - zoomMargin);
+        const extendedMaxQ = Math.ceil(centerX + viewWidth / 2 + zoomMargin);
+        const extendedMinR = Math.floor(centerY - viewHeight / 2 - zoomMargin);
+        const extendedMaxR = Math.ceil(centerY + viewHeight / 2 + zoomMargin);
+        
+        // Рисуем только видимые гексы с расширенными границами
         this.grid.map.forEach((hex, key) => {
-            if (hex.q >= minQ && hex.q <= maxQ && hex.r >= minR && hex.r <= maxR) {
+            if (hex.q >= extendedMinQ && hex.q <= extendedMaxQ && hex.r >= extendedMinR && hex.r <= extendedMaxR) {
                 const center = this.grid.hexToScreen(hex.q, hex.r);
                 
-                // Проверяем, находится ли гекс в пределах экрана
-                if (center.x > -this.grid.hexSize * this.grid.zoom && 
-                    center.x < this.canvas.width + this.grid.hexSize * this.grid.zoom &&
-                    center.y > -this.grid.hexSize * this.grid.zoom && 
-                    center.y < this.canvas.height + this.grid.hexSize * this.grid.zoom) {
+                // Проверяем, находится ли гекс в пределах экрана с запасом на зум
+                const hexPadding = this.grid.hexSize * this.grid.zoom * 2;
+                if (center.x > -hexPadding && 
+                    center.x < this.canvas.width + hexPadding &&
+                    center.y > -hexPadding && 
+                    center.y < this.canvas.height + hexPadding) {
                     
                     // Цвет местности
                     let color = '#4ade80';
