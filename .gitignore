@@ -1,26 +1,19 @@
 ```
-# Build artifacts
-dist/
-build/
-*.js.map
-*.min.js
-
 # Dependencies
 node_modules/
 
-# Editors
-.vscode/
-.idea/
+# Build artifacts
+dist/
+build/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
 
-# Logs
-*.log
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Python (if applicable)
+# Python
 __pycache__/
 *.pyc
 *.pyo
@@ -29,6 +22,7 @@ __pycache__/
 env/
 venv/
 .venv/
+.venv.bak/
 pip-log.txt
 pip-delete-this-directory.txt
 .tox/
@@ -39,30 +33,37 @@ nosetests.xml
 coverage.xml
 *.cover
 *.log
+*.tmp
+*.swp
 .DS_Store
 Thumbs.db
 
-# Compiled binary files
-*.exe
-*.dll
-*.so
-*.dylib
+# Logs
+*.log
 
-# Compressed archives
-*.zip
-*.tar.gz
-*.tar.bz2
-*.tar.xz
-*.7z
-*.rar
-*.gz
+# Environment variables
+.env
+.env.local
+.env.*
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Distribution / packaging
+.Python
+env/
+venv/
+.venv/
+.venv.bak/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
 ```
