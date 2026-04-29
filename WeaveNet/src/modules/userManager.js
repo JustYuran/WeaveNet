@@ -96,7 +96,6 @@ class UserManager {
         // [PLAN] Оптимизировать добавление для больших массивов
         this.users.push(user);
         
-        console.log(`[UserManager] Создан пользователь ${user.id} на гексе ${user.hexId}`);
         return user;
     }
     
@@ -174,7 +173,7 @@ class UserManager {
         // [ЧТО] Логируем статистику
         // [ЗАЧЕМ] Отладка и мониторинг
         // [PLAN] Отправить в систему статистики
-        if (this.users.length > 0) {
+        if (this.users.length > 0 && this.lastUpdateTime % 5000 < 1000) {
             console.log(`[UserManager] Обновлено ${this.users.length} пользователей`);
         }
     }
@@ -237,8 +236,6 @@ class UserManager {
         // [ЗАЧЕМ] Обновление позиции
         // [PLAN] Добавить анимацию перемещения
         user.hexId = newHexId;
-        
-        console.log(`[UserManager] Пользователь ${user.id} переместился на гекс ${newHexId}`);
     }
     
     /**

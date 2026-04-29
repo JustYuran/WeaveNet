@@ -31,15 +31,15 @@ class Game {
         // [PLAN] Добавить эффекты и анимации
         this.gridRenderer = new GridRenderer(this.canvas, this.hexGrid);
         
-        // [ЧТО] Передаём userManager в gridRenderer для отрисовки
-        // [ЗАЧЕМ] Рендерер должен знать о пользователях
-        // [PLAN] Рефакторинг: сделать userManager параметром конструктора
-        this.gridRenderer.userManager = this.userManager;
-        
         // [ЧТО] Создаём менеджер пользователей
         // [ЗАЧЕМ] Управление пользователями на карте (до 6 на гекс, макс 1.5*число полей)
         // [PLAN] Интеграция с постройками и другими системами
         this.userManager = new UserManager(this.hexGrid);
+        
+        // [ЧТО] Передаём userManager в gridRenderer для отрисовки
+        // [ЗАЧЕМ] Рендерер должен знать о пользователях
+        // [PLAN] Рефакторинг: сделать userManager параметром конструктора
+        this.gridRenderer.userManager = this.userManager;
         
         // [ЧТО] Создаём начальных пользователей (заполняем карту)
         // [ЗАЧЕМ] Стартовое состояние игры с активностью
