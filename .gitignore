@@ -1,18 +1,67 @@
 ```
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+target/
+
 # Logs and temp files
 *.log
 *.tmp
-*.swp
 
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
 .idea/
 
-# Original rules preserved
-*.log
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Compiled
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.class
+
+# Compression
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Caches
+.mypy_cache/
+.pytest_cache/
+.gradle/
 ```
