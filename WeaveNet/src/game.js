@@ -168,37 +168,72 @@ class HexGrid {
         }
     }
 
-    // Рисование объекта на гексе
+    // Рисование объекта на гексе с плавным переходом цвета
+    // [ЧТО] Метод отрисовки объектов с интерполяцией цвета при смене режима.
+    // [ЗАЧЕМ] Плавное изменение цвета вместо резкого скачка улучшает визуальное восприятие.
+    //          Игрок видит постепенный переход между состояниями здания.
+    // [TODO] 3. Сгладить переходы между режимами строений (плавное изменение цвета)
     drawObject(ctx, x, y, size, object) {
-        // Определение символа и цвета в зависимости от типа объекта
+        // Определение символа и базового цвета в зависимости от типа объекта
         let symbol = '📶'; // Роутер
-        let color = '#4a9eff';
+        let baseColor = '#4a9eff';
         if (object.type === 'Роутер') {
             symbol = '📶'; // Router
-            color = '#4a9eff';
+            baseColor = '#4a9eff';
         } else if (object.type === 'Вышка') {
             symbol = '🗼'; // Tower
-            color = '#f59e0b';
+            baseColor = '#f59e0b';
         }
         
-        // Define color based on mode
-        let modeColor = color;
+        // Определение целевого цвета в зависимости от режима
+        let targetColor = baseColor;
         if (object.mode === 'inactive') {
-            modeColor = '#9ca3af'; // gray for inactive
+            targetColor = '#9ca3af'; // gray for inactive
         } else if (object.mode === 'economy') {
-            modeColor = '#fbbf24'; // yellow for economy
+            targetColor = '#fbbf24'; // yellow for economy
         } else if (object.mode === 'active') {
-            modeColor = color; // original color for active
+            targetColor = baseColor; // original color for active
         } else if (object.mode === 'blocked') {
-            modeColor = '#ef4444'; // red for blocked
+            targetColor = '#ef4444'; // red for blocked
         }
         
-        // Рисуем символ объекта
-        ctx.fillStyle = modeColor;
+        // Инициализация текущего цвета для интерполяции если нет
+        if (!object.currentColor) {
+            object.currentColor = targetColor;
+        }
+        
+        // Плавная интерполяция текущего цвета к целевому (lerp)
+        object.currentColor = this.interpolateColor(object.currentColor, targetColor, 0.1);
+        
+        // Рисуем символ объекта с текущим (интерполированным) цветом
+        ctx.fillStyle = object.currentColor;
         ctx.font = `${size * 0.8}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, x, y);
+    }
+    
+    // [ЧТО] Интерполяция между двумя HEX цветами с коэффициентом t.
+    // [ЗАЧЕМ] Позволяет плавно изменять цвет объекта от одного оттенка к другому.
+    //          Используется для визуального сглаживания переходов между режимами.
+    // [TODO] 3. Сгладить переходы между режимами строений
+    interpolateColor(color1, color2, t) {
+        // Парсинг HEX цветов
+        const r1 = parseInt(color1.slice(1, 3), 16);
+        const g1 = parseInt(color1.slice(3, 5), 16);
+        const b1 = parseInt(color1.slice(5, 7), 16);
+        
+        const r2 = parseInt(color2.slice(1, 3), 16);
+        const g2 = parseInt(color2.slice(3, 5), 16);
+        const b2 = parseInt(color2.slice(5, 7), 16);
+        
+        // Линейная интерполяция RGB компонентов
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+        
+        // Возврат в HEX формат
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
     }
 
     // [ЧТО] Рисование зоны покрытия объекта с разными режимами видимости.
@@ -264,6 +299,32 @@ class HexGrid {
     //          создавая эффект единой объединённой зоны вместо нескольких отдельных кругов.
     // [PLAN] 2.3.2 Наложение зон
     drawCoverageMerged(ctx, coverageMode = 'load') {
+        // Используем кэш если он валиден
+        if (this.coverageCache && this.coverageCacheValid) {
+            // Рисуем из кэша
+            this.coverageCache.forEach((zone, index) => {
+                ctx.save();
+                ctx.shadowColor = zone.color;
+                ctx.shadowBlur = 10;
+                ctx.strokeStyle = `${zone.color}FF`;
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                
+                // Рисуем сохранённые пути из кэша
+                zone.paths.forEach(path => {
+                    ctx.beginPath();
+                    path.forEach((point, i) => {
+                        if (i === 0) ctx.moveTo(point.x, point.y);
+                        else ctx.lineTo(point.x, point.y);
+                    });
+                    ctx.stroke();
+                });
+                
+                ctx.restore();
+            });
+            return;
+        }
+        
         // Собираем все активные объекты с зонами покрытия
         const coverageZones = [];
         this.map.forEach((hex, key) => {
@@ -296,6 +357,9 @@ class HexGrid {
             return;
         }
         
+        // Кэш для хранения путей
+        const cacheData = [];
+        
         // Для каждой зоны рисуем контур, но пропускаем дуги внутри других зон
         coverageZones.forEach((zone, index) => {
             ctx.save();
@@ -309,7 +373,7 @@ class HexGrid {
             // Проверяем каждую точку окружности на попадание в другие зоны
             const step = 2; // Шаг проверки в градусах (меньше = точнее, но медленнее)
             let isDrawing = false;
-            let startAngle = 0;
+            let currentPath = [];
             
             for (let angle = 0; angle <= 360; angle += step) {
                 const rad = angle * Math.PI / 180;
@@ -333,16 +397,23 @@ class HexGrid {
                         // Начинаем новую дугу
                         ctx.beginPath();
                         ctx.moveTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
+                        currentPath = [{x: zone.x + zone.radius * Math.cos(rad), y: zone.y + zone.radius * Math.sin(rad)}];
                         isDrawing = true;
                     } else {
                         // Продолжаем дугу
                         ctx.lineTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
+                        currentPath.push({x: zone.x + zone.radius * Math.cos(rad), y: zone.y + zone.radius * Math.sin(rad)});
                     }
                 } else {
                     if (isDrawing) {
                         // Заканчиваем дугу
                         ctx.stroke();
+                        if (currentPath.length > 0) {
+                            if (!cacheData[index]) cacheData[index] = {color: zone.color, paths: []};
+                            cacheData[index].paths.push([...currentPath]);
+                        }
                         isDrawing = false;
+                        currentPath = [];
                     }
                 }
             }
@@ -350,10 +421,18 @@ class HexGrid {
             // Если остались незавершённые линии, завершаем их
             if (isDrawing) {
                 ctx.stroke();
+                if (currentPath.length > 0) {
+                    if (!cacheData[index]) cacheData[index] = {color: zone.color, paths: []};
+                    cacheData[index].paths.push([...currentPath]);
+                }
             }
             
             ctx.restore();
         });
+        
+        // Сохраняем кэш
+        this.coverageCache = cacheData;
+        this.coverageCacheValid = true;
     }
 
     // Проверка возможности размещения
@@ -396,6 +475,10 @@ class HexGrid {
 }
 
 class Game {
+    // [ЧТО] Кэширование расчетных данных покрытия для повышения FPS.
+    // [ЗАЧЕМ] Вместо пересчета зон покрытия каждый кадр, кэшируем результаты
+    //          и обновляем только при изменении состояния объектов.
+    // [TODO] 7. Добавить кэширование расчетных данных покрытия для повышения FPS
     constructor() {
         this.canvas = document.getElementById('game-canvas');
         this.ctx = this.canvas.getContext('2d');
@@ -420,6 +503,10 @@ class Game {
         
         // Выбранный объект
         this.selectedHex = null;
+        
+        // Кэш зон покрытия для оптимизации
+        this.coverageCache = null;
+        this.coverageCacheValid = false;
         
         this.init();
     }
@@ -598,6 +685,8 @@ class Game {
                 range: 5,
                 energyCost: 2
             });
+            // Инвалидация кэша покрытия при изменении сети
+            this.coverageCacheValid = false;
             this.updateUI();
             this.showContextPanel(this.grid.getHex(q, r));
         }
@@ -613,6 +702,8 @@ class Game {
                 range: 10,
                 energyCost: 8
             });
+            // Инвалидация кэша покрытия при изменении сети
+            this.coverageCacheValid = false;
             this.updateUI();
             this.showContextPanel(this.grid.getHex(q, r));
         }
@@ -625,6 +716,8 @@ class Game {
             const modes = ['inactive', 'economy', 'active', 'blocked']; // Не активный, Экономный, Активный, Блокировка
             const currentIndex = modes.indexOf(hex.object.mode);
             hex.object.mode = modes[(currentIndex + 1) % modes.length];
+            // Инвалидация кэша покрытия при смене режима
+            this.coverageCacheValid = false;
             this.showContextPanel(hex);
         }
     }
@@ -636,6 +729,8 @@ class Game {
             const cost = hex.object.type === 'Роутер' ? 30 : 100;
             this.info += Math.floor(cost * 0.5);
             this.grid.removeObject(q, r);
+            // Инвалидация кэша покрытия при удалении объекта
+            this.coverageCacheValid = false;
             this.updateUI();
             this.showContextPanel(hex);
         }
@@ -728,6 +823,87 @@ class Game {
             this.ctx.stroke();
         }
     }
+    
+    // [ЧТО] Оптимизированный метод отрисовки только видимой области карты.
+    // [ЗАЧЕМ] При большом зуме нет необходимости рисовать гексы за пределами экрана.
+    //          Это значительно повышает FPS при работе с большими картами.
+    // [TODO] 6. Оптимизировать отрисовку гексагональной сетки при большом зуме
+    renderOptimized() {
+        // Очистка
+        this.ctx.fillStyle = '#1a1a2e';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Вычисляем видимую область в гексагональных координатах
+        const margin = 2; // Дополнительный запас гексов по краям
+        const viewWidth = (this.canvas.width / this.grid.zoom) / this.grid.hexSize;
+        const viewHeight = (this.canvas.height / this.grid.zoom) / this.grid.hexSize;
+        
+        const centerX = (-this.grid.offsetX + this.canvas.width / 2) / (this.grid.zoom * this.grid.hexSize);
+        const centerY = (-this.grid.offsetY + this.canvas.height / 2) / (this.grid.zoom * this.grid.hexSize);
+        
+        const minQ = Math.floor(centerX - viewWidth / 2 - margin);
+        const maxQ = Math.ceil(centerX + viewWidth / 2 + margin);
+        const minR = Math.floor(centerY - viewHeight / 2 - margin);
+        const maxR = Math.ceil(centerY + viewHeight / 2 + margin);
+        
+        // Рисуем только видимые гексы
+        this.grid.map.forEach((hex, key) => {
+            if (hex.q >= minQ && hex.q <= maxQ && hex.r >= minR && hex.r <= maxR) {
+                const center = this.grid.hexToScreen(hex.q, hex.r);
+                
+                // Проверяем, находится ли гекс в пределах экрана
+                if (center.x > -this.grid.hexSize * this.grid.zoom && 
+                    center.x < this.canvas.width + this.grid.hexSize * this.grid.zoom &&
+                    center.y > -this.grid.hexSize * this.grid.zoom && 
+                    center.y < this.canvas.height + this.grid.hexSize * this.grid.zoom) {
+                    
+                    // Цвет местности
+                    let color = '#4ade80';
+                    if (hex.terrain === 'desert') color = '#fbbf24';
+                    if (hex.terrain === 'snow') color = '#f3f4f6';
+                    
+                    this.grid.drawHex(this.ctx, center.x, center.y, this.grid.hexSize * this.grid.zoom, color, hex.obstacle);
+                    
+                    if (hex.object) {
+                        this.grid.drawObject(this.ctx, center.x, center.y, this.grid.hexSize * this.grid.zoom, hex.object);
+                    }
+                }
+            }
+        });
+        
+        // Отрисовка зон покрытия
+        this.grid.drawCoverageMerged(this.ctx, 'load');
+        
+        // Отрисовка объектов поверх зон
+        this.grid.map.forEach((hex, key) => {
+            if (hex.q >= minQ && hex.q <= maxQ && hex.r >= minR && hex.r <= maxR && hex.object) {
+                const center = this.grid.hexToScreen(hex.q, hex.r);
+                if (center.x > -this.grid.hexSize * this.grid.zoom && 
+                    center.x < this.canvas.width + this.grid.hexSize * this.grid.zoom &&
+                    center.y > -this.grid.hexSize * this.grid.zoom && 
+                    center.y < this.canvas.height + this.grid.hexSize * this.grid.zoom) {
+                    this.grid.drawObject(this.ctx, center.x, center.y, this.grid.hexSize * this.grid.zoom, hex.object);
+                }
+            }
+        });
+        
+        // Отрисовка выбранного гекса
+        if (this.selectedHex) {
+            const center = this.grid.hexToScreen(this.selectedHex.q, this.selectedHex.r);
+            this.ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (Math.PI / 3) * i;
+                const hx = center.x + this.grid.hexSize * this.zoom * 1.1 * Math.cos(angle);
+                const hy = center.y + this.grid.hexSize * this.zoom * 1.1 * Math.sin(angle);
+                if (i === 0) this.ctx.moveTo(hx, hy);
+                else this.ctx.lineTo(hx, hy);
+            }
+            this.ctx.closePath();
+            this.ctx.strokeStyle = '#4a9eff';
+            this.ctx.lineWidth = 3;
+            this.ctx.stroke();
+        }
+    }
 
     loop() {
         const now = Date.now();
@@ -736,7 +912,8 @@ class Game {
         
         this.updateEconomy(deltaTime);
         this.updateTimer(deltaTime);
-        this.render();
+        // Используем оптимизированную отрисовку для повышения FPS
+        this.renderOptimized();
         
         requestAnimationFrame(() => this.loop());
     }
