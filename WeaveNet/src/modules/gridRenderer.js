@@ -85,8 +85,19 @@ class GridRenderer {
             // [ЧТО] Вычисляем pixel-координаты центра гекса относительно центра экрана
             // [ЗАЧЕМ] Позиционируем гекс на экране
             // [PLAN] Использовать матричные преобразования для камеры
-            hex.x = centerX + hex.q * this.hexGrid.getHexWidth();
-            hex.y = centerY + (hex.r + hex.q / 2) * (this.hexGrid.getHexHeight() * 0.75);
+            
+            // Для flat-top ориентации (плоская вершина):
+            // Ширина гекса = sqrt(3) * size, Высота = 2 * size
+            // Горизонтальное расстояние между центрами = width
+            // Вертикальное расстояние между рядами = 3/4 * height
+            const hexWidth = this.hexGrid.getHexWidth();
+            const hexHeight = this.hexGrid.getHexHeight();
+            
+            // Конвертация axial координат (q, r) в pixel координаты
+            // x = width * q
+            // y = height * (r + q/2)
+            hex.x = centerX + hexWidth * hex.q;
+            hex.y = centerY + hexHeight * (hex.r + hex.q / 2);
             
             // [ЧТО] Рисуем гекс
             // [ЗАЧЕМ] Базовая визуализация гекса
