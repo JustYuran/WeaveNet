@@ -472,6 +472,13 @@ class Game {
         // [ЗАЧЕМ] Начало цикла
         // [PLAN] Предварительная загрузка ресурсов
         gameLoop();
+        
+        // [ЧТО] Таймер для обновления UI нижней панели
+        // [ЗАЧЕМ] Обновление информации о пользователях на гексе (синхронно с их перемещением)
+        // [PLAN] Интегрировать в основной игровой цикл
+        setInterval(() => {
+            this.updateBottomPanelUI();
+        }, 1000); // Обновляем каждую секунду когда пользователи перемещаются
     }
     
     /**
@@ -554,6 +561,33 @@ class Game {
         // [ЗАЧЕМ] Показать что постройка удалена
         // [PLAN] Анимация обновления
         this.updateBottomPanel(hex);
+    }
+    
+    /**
+     * Обновление только UI нижней панели (без полной перерисовки)
+     * [ЧТО] Обновляет динамические данные (пользователи, время)
+     * [ЗАЧЕМ] Актуальная информация без полного обновления панели
+     * [PLAN] Использовать для частых обновлений
+     */
+    updateBottomPanelUI() {
+        const selectedHexId = this.gridRenderer.getSelectedHex();
+        if (selectedHexId === null) {
+            return; // Ничего не обновляем если гекс не выбран
+        }
+        
+        const hex = this.hexGrid.getHexById(selectedHexId);
+        if (!hex) {
+            return;
+        }
+        
+        // [ЧТО] Обновляем только счётчик пользователей
+        // [ЗАЧЕМ] Пользователи перемещаются каждую секунду
+        // [PLAN] Добавить другие динамические данные
+        const usersOnHex = this.userManager ? this.userManager.getUsersOnHex(hex.id).length : 0;
+        const usersElement = document.getElementById('hex-users');
+        if (usersElement) {
+            usersElement.textContent = usersOnHex;
+        }
     }
 }
 
