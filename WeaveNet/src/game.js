@@ -1,4 +1,4 @@
-// WeaveNet - Свободный Сигнал
+﻿// WeaveNet - Свободный Сигнал
 // Основная игровая логика
 
 class HexGrid {
@@ -90,6 +90,7 @@ class HexGrid {
     draw(ctx) {
         ctx.save();
         
+        // Сначала рисуем все гексы
         this.map.forEach((hex, key) => {
             const center = this.hexToScreen(hex.q, hex.r);
             
@@ -100,6 +101,22 @@ class HexGrid {
             
             // Рисуем гекс
             this.drawHex(ctx, center.x, center.y, this.hexSize * this.zoom, color, hex.obstacle);
+        });
+        
+        // Затем рисуем зоны покрытия всех объектов
+        this.map.forEach((hex, key) => {
+            if (hex.object) {
+                const center = this.hexToScreen(hex.q, hex.r);
+                this.drawCoverage(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+            }
+        });
+        
+        // Затем рисуем все объекты поверх зон покрытия
+        this.map.forEach((hex, key) => {
+            if (hex.object) {
+                const center = this.hexToScreen(hex.q, hex.r);
+                this.drawObjectIcon(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+            }
         });
         
         ctx.restore();
@@ -142,6 +159,72 @@ class HexGrid {
             if (obstacle === 'water') symbol = '💧';
             ctx.fillText(symbol, x, y);
         }
+    }
+
+    // Рисование иконки объекта на гексе (без зоны покрытия)
+    drawObjectIcon(ctx, x, y, size, object) {
+        // Определение символа и цвета в зависимости от типа объекта
+        let symbol = '📶'; // Роутер
+        let color = '#4a9eff';
+        if (object.type === 'Вышка') {
+            symbol = '🗼'; // Вышка
+            color = '#f59e0b';
+        }
+        
+        // Определение цвета в зависимости от режима
+        let modeColor = color;
+        if (object.mode === 'inactive') {
+            modeColor = '#9ca3af'; // серый для неактивного
+        } else if (object.mode === 'economy') {
+            modeColor = '#fbbf24'; // желтый для экономного
+        } else if (object.mode === 'active') {
+            modeColor = color; // оригинальный цвет для активного
+        }
+        
+        // Рисуем символ объекта
+        ctx.fillStyle = modeColor;
+        ctx.font = `${size * 0.8}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(symbol, x, y);
+    }
+
+    // Рисование зоны покрытия объекта
+    drawCoverage(ctx, x, y, size, object) {
+        // Рисуем зону покрытия только для активных режимов
+        if (object.mode !== 'active' && object.mode !== 'economy') {
+            return;
+        }
+        
+        // Определение цвета в зависимости от типа объекта
+        let color = '#4a9eff';
+        if (object.type === 'Вышка') {
+            color = '#f59e0b';
+        }
+        
+        // Определение цвета в зависимости от режима
+        let modeColor = color;
+        if (object.mode === 'economy') {
+            modeColor = '#fbbf24'; // желтый для экономного
+        }
+        
+        const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
+        const rangePixels = object.range * size * rangeMultiplier;
+        
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
+        gradient.addColorStop(0, `${modeColor}40`); // 25% прозрачности
+        gradient.addColorStop(1, `${modeColor}00`); // полностью прозрачный
+        
+        ctx.beginPath();
+        ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+    }
+
+    // Старый метод (оставлен для совместимости)
+    drawObject(ctx, x, y, size, object) {
+        this.drawObjectIcon(ctx, x, y, size, object);
+        this.drawCoverage(ctx, x, y, size, object);
     }
 
     // Проверка возможности размещения
@@ -334,8 +417,13 @@ class Game {
         
         // Объект
         if (hex.object) {
+            const modeNames = {
+                'inactive': '⚪ Не активный',
+                'economy': '🟡 Экономный',
+                'active': '🟢 Активный'
+            };
             info += `<div class="panel-row"><span>Объект:</span><span>${hex.object.type}</span></div>`;
-            info += `<div class="panel-row"><span>Режим:</span><span>${hex.object.mode}</span></div>`;
+            info += `<div class="panel-row"><span>Режим:</span><span>${modeNames[hex.object.mode] || hex.object.mode}</span></div>`;
             
             // Кнопки управления
             buttons.innerHTML = `
@@ -366,7 +454,7 @@ class Game {
             this.info -= 30;
             this.grid.placeObject(q, r, {
                 type: 'Роутер',
-                mode: 'Белый',
+                mode: 'inactive', // Не активный
                 range: 5,
                 energyCost: 2
             });
@@ -381,7 +469,7 @@ class Game {
             this.info -= 100;
             this.grid.placeObject(q, r, {
                 type: 'Вышка',
-                mode: 'Белый',
+                mode: 'inactive', // Не активный
                 range: 10,
                 energyCost: 8
             });
@@ -394,7 +482,7 @@ class Game {
         const [q, r] = key.split(',').map(Number);
         const hex = this.grid.getHex(q, r);
         if (hex && hex.object) {
-            const modes = ['Белый', 'Желтый', 'Зеленый'];
+            const modes = ['inactive', 'economy', 'active']; // Не активный, Экономный, Активный
             const currentIndex = modes.indexOf(hex.object.mode);
             hex.object.mode = modes[(currentIndex + 1) % modes.length];
             this.showContextPanel(hex);
@@ -443,18 +531,20 @@ class Game {
         let infoProduction = 0;
         
         this.grid.map.forEach(hex => {
-            if (hex.object && hex.object.mode !== 'Белый') {
+            // Энергию потребляют только активные и экономные режимы
+            if (hex.object && hex.object.mode !== 'inactive') {
                 energyConsumption += hex.object.energyCost;
                 
                 // Бонус к информации за активные объекты
-                if (hex.object.mode === 'Желтый') infoProduction += 0.5;
-                if (hex.object.mode === 'Зеленый') infoProduction += 1.0;
+                if (hex.object.mode === 'economy') infoProduction += 0.5;
+                if (hex.object.mode === 'active') infoProduction += 1.0;
             }
         });
         
-        // Пассивная генерация энергии
-        const activeObjects = Array.from(this.grid.map.values()).filter(h => h.object && h.object.mode !== 'Белый').length;
-        const energyProduction = Math.floor(activeObjects / 10);
+        // Пассивная генерация энергии (стартовый прирост + бонус от объектов)
+        const baseEnergyProduction = 10; // Стартовый прирост энергии
+        const activeObjects = Array.from(this.grid.map.values()).filter(h => h.object && h.object.mode !== 'inactive').length;
+        const energyProduction = baseEnergyProduction + Math.floor(activeObjects / 10);
         
         this.energyRate = energyProduction - energyConsumption;
         this.infoRate = infoProduction;
