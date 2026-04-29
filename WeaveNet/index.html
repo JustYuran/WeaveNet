@@ -52,12 +52,12 @@
         }
         
         .resource-value {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
         }
         
         .resource-label {
-            font-size: 12px;
+            font-size: 13px;
             opacity: 0.7;
         }
         
@@ -155,19 +155,27 @@
         .btn-mode { background: #4a9eff; color: white; }
         .btn-mode:hover { background: #3a8eef; }
         
-        .btn-demolish { background: #f87171; color: white; }
-        .btn-demolish:hover { background: #e86161; }
+        .btn-demolish { background: #dc2626; color: white; font-weight: bold; }
+        .btn-demolish:hover { background: #b91c1c; }
         
         .btn-close { 
             position: absolute;
             top: 10px;
             right: 10px;
-            background: transparent;
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             color: white;
             font-size: 20px;
             cursor: pointer;
+            border-radius: 4px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
         }
+        .btn-close:hover { background: rgba(255, 255, 255, 0.4); }
     </style>
 </head>
 <body>
