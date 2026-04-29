@@ -88,44 +88,46 @@ class HexGrid {
      * [PLAN] Добавить параметры генерации (размер, изрезанность, количество островов)
      */
     generateContinentShape(q, r, halfSize) {
-        // [ЧТО] Процедурная генерация формы континента
-        // [ЗАЧЕМ] Случайная карта вместо фиксированной формы России
+        // [ЧТО] Процедурная генерация формы континента с большим количеством гексов
+        // [ЗАЧЕМ] Случайная карта с достаточным количеством гексов для формулы пользователей
         // [PLAN] Реализовать через шум Перлина или клеточный автомат
         
-        // Базовая эллиптическая форма с вариациями
-        const aspectRatio = 1.8; // Пропорции континента
-        const baseRadiusQ = halfSize;
-        const baseRadiusR = Math.floor(halfSize / aspectRatio);
+        // Базовая эллиптическая форма с вариациями - увеличиваем размер континента
+        const aspectRatio = 1.5; // Более круглый континент для большей площади
+        const baseRadiusQ = halfSize * 0.85; // Увеличиваем радиус до 85% от половины карты
+        const baseRadiusR = Math.floor(baseRadiusQ / aspectRatio);
         
-        // Добавляем случайные вариации к границам
-        const noise = Math.sin(q * 0.1) * Math.cos(r * 0.1) * 5 + 
-                      Math.sin(q * 0.3 + r * 0.2) * 3;
+        // Добавляем случайные вариации к границам на основе координат
+        // Используем seed-based подход для воспроизводимости в рамках одной сессии
+        const noiseSeed = q * 12.9898 + r * 78.233;
+        const noise = Math.sin(noiseSeed) * 43758.5453 - Math.floor(Math.sin(noiseSeed) * 43758.5453);
+        const scaledNoise = (noise - 0.5) * 10; // Вариация границ ±5 гексов
         
-        const effectiveRadiusR = baseRadiusR + noise;
+        const effectiveRadiusR = baseRadiusR + scaledNoise;
         
         // Проверка попадания в эллипс с вариациями
         const normalizedQ = q / baseRadiusQ;
         const normalizedR = r / effectiveRadiusR;
         const distance = Math.sqrt(normalizedQ * normalizedQ + normalizedR * normalizedR);
         
-        if (distance > 1.0) {
-            return false;
+        // Основной континент - возвращаем true для всех гексов внутри эллипса
+        if (distance <= 0.85) {
+            return true;
         }
         
-        // Добавляем случайные полуострова и заливы по краям
-        if (distance > 0.7 && distance < 0.95) {
-            // 20% шанс создать залив/полуостров
-            if (Math.random() > 0.8) {
-                return !this.isCoastalFeature(q, r, halfSize);
-            }
+        // Пограничная зона с плавным переходом
+        if (distance <= 1.0) {
+            // Шанс уменьшается по мере удаления от центра
+            const edgeChance = 1.0 - (distance - 0.85) / 0.15;
+            return Math.random() < edgeChance;
         }
         
-        // Случайные острова вокруг континента
-        if (distance >= 0.95 && distance < 1.3) {
-            return Math.random() > 0.7; // 30% островов
+        // Острова вокруг континента (редко)
+        if (distance > 1.0 && distance < 1.2) {
+            return Math.random() > 0.85; // 15% островов
         }
         
-        return true;
+        return false;
     }
     
     /**
