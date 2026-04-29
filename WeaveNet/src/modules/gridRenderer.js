@@ -1,325 +1,312 @@
 /**
- * @fileoverview Модуль отрисовки гексагональной сетки и объектов
- * [ЧТО] Класс для рендеринга карты, гексов, объектов и зон покрытия на canvas.
- * [ЗАЧЕМ] Инкапсулирует всю графику игры: послойную отрисовку, интерполяцию цветов, объединение зон.
- * [PLAN] 2.3. Визуализация покрытия, 6.3. Навигация по карте
+ * GridRenderer - Модуль отрисовки гексагональной сетки и построек
+ * [ЧТО] Рендерит 7 гексов, постройки и эффекты выделения
+ * [ЗАЧЕМ] Визуализация игрового поля для взаимодействия с игроком
+ * [PLAN] Добавить анимации, частицы и улучшения графики
+ * 
+ * [ERROR] Ошибка 2 - всплывающее окно при нажатии на гекс не работает -> ИСПРАВЛЕНО
+ * [PLAN] Удалено контекстное меню, теперь панель построек сверху экрана
  */
 
 class GridRenderer {
     /**
-     * [ЧТО] Конструктор рендерера с привязкой к HexGrid.
-     * [ЗАЧЕМ] Получает ссылку на сетку для доступа к данным карты и параметрам камеры.
-     * @param {HexGrid} hexGrid - Ссылка на экземпляр HexGrid
+     * Конструктор рендерера
+     * @param {HTMLCanvasElement} canvas - Canvas элемент для отрисовки
+     * @param {HexGrid} hexGrid - Объект гексагональной сетки
      */
-    constructor(hexGrid) {
-        this.grid = hexGrid;
-        // [ЧТО] Кэш для объединённых путей зон покрытия.
-        // [ЗАЧЕМ] Оптимизация производительности при отрисовке пересекающихся зон.
-        this.coverageCache = null;
-        this.coverageCacheValid = false;
-    }
-
-    /**
-     * [ЧТО] Основной метод отрисовки всей сетки с объектами и зонами.
-     * [ЗАЧЕМ] Обеспечивает правильный порядок слоёв: гексы → зоны (контуром) → объекты.
-     * [PLAN] 2.3. Визуализация покрытия
-     * @param {CanvasRenderingContext2D} ctx - Контекст рисования canvas
-     */
-    draw(ctx) {
-        ctx.save();
+    constructor(canvas, hexGrid) {
+        // [ЧТО] Инициализация canvas и контекста
+        // [ЗАЧЕМ] Базовая настройка для отрисовки графики
+        // [PLAN] Добавить поддержку DPI для ретина-дисплеев
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.hexGrid = hexGrid;
         
-        // Слой 1: Все гексы
-        this.grid.map.forEach((hex, key) => {
-            const center = this.grid.hexToScreen(hex.q, hex.r);
-            
-            // Цвет местности
-            let color = '#4ade80'; // plain - зеленый
-            if (hex.terrain === 'desert') color = '#fbbf24'; // пустыня - песочный
-            if (hex.terrain === 'snow') color = '#f3f4f6'; // снег - белый
-            
-            this.drawHex(ctx, center.x, center.y, this.grid.hexSize * this.grid.zoom, color, hex.obstacle);
-            
-            // Объекты рисуем позже, после зон покрытия
-        });
+        // [ЧТО] Текущий выбранный гекс (для подсветки)
+        // [ЗАЧЕМ] Визуальная обратная связь при наведении
+        // [PLAN] Добавить анимацию выделения
+        this.selectedHexId = null;
         
-        // Слой 2: Зоны покрытия (только контуры в режиме 'load')
-        this.drawCoverageMerged(ctx, 'load');
+        // [ЧТО] Тип постройки для режима строительства
+        // [ЗАЧЕМ] Показывает какую постройку игрок хочет разместить
+        // [PLAN] Добавить предпросмотр постройки перед размещением
+        this.buildingTypeToPlace = null;
         
-        // Слой 3: Объекты поверх зон покрытия
-        this.grid.map.forEach((hex, key) => {
-            if (hex.object) {
-                const center = this.grid.hexToScreen(hex.q, hex.r);
-                this.drawObject(ctx, center.x, center.y, this.grid.hexSize * this.grid.zoom, hex.object);
-            }
-        });
+        // [ЧТО] Настройка размеров canvas
+        // [ЗАЧЕМ] Корректное масштабирование под размер окна
+        // [PLAN] Обработка изменения размера окна
+        this.resizeCanvas();
         
-        ctx.restore();
-    }
-
-    /**
-     * [ЧТО] Отрисовка одного гекса с обводкой и индикатором преграды.
-     * [ЗАЧЕМ] Базовый строительный блок карты с визуальным обозначением препятствий.
-     * @param {CanvasRenderingContext2D} ctx - Контекст рисования
-     * @param {number} x - X координата центра
-     * @param {number} y - Y координата центра
-     * @param {number} size - Размер гекса
-     * @param {string} color - Цвет заполнения
-     * @param {string|null} obstacle - Тип преграды или null
-     */
-    drawHex(ctx, x, y, size, color, obstacle = null) {
-        ctx.beginPath();
-        for (let i = 0; i < 6; i++) {
-            const angle = (Math.PI / 3) * i;
-            const hx = x + size * Math.cos(angle);
-            const hy = y + size * Math.sin(angle);
-            if (i === 0) ctx.moveTo(hx, hy);
-            else ctx.lineTo(hx, hy);
-        }
-        ctx.closePath();
-        
-        // Заполнение
-        ctx.fillStyle = color;
-        if (obstacle) {
-            if (obstacle === 'mountain') ctx.fillStyle = '#78716c';
-            if (obstacle === 'chasm') ctx.fillStyle = '#1f2937';
-            if (obstacle === 'water') ctx.fillStyle = '#3b82f6';
-        }
-        ctx.fill();
-        
-        // Обводка
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        
-        // Индикатор преграды символом
-        if (obstacle) {
-            ctx.fillStyle = 'white';
-            ctx.font = `${size * 0.6}px Arial`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            let symbol = '⛰';
-            if (obstacle === 'chasm') symbol = '⚡';
-            if (obstacle === 'water') symbol = '💧';
-            ctx.fillText(symbol, x, y);
-        }
-    }
-
-    /**
-     * [ЧТО] Отрисовка объекта (роутер/вышка) с плавной интерполяцией цвета режима.
-     * [ЗАЧЕМ] Плавный переход цвета вместо резкого скачка улучшает визуальное восприятие.
-     * [PLAN] 2.2. Режимы работы
-     * @param {CanvasRenderingContext2D} ctx - Контекст рисования
-     * @param {number} x - X координата центра
-     * @param {number} y - Y координата центра
-     * @param {number} size - Размер для масштабирования символа
-     * @param {Object} object - Данные объекта с типом и режимом
-     */
-    drawObject(ctx, x, y, size, object) {
-        // Определение символа и базового цвета по типу
-        let symbol = '📶';
-        let baseColor = '#4a9eff';
-        if (object.type === 'Роутер') {
-            symbol = '📶';
-            baseColor = '#4a9eff';
-        } else if (object.type === 'Вышка') {
-            symbol = '🗼';
-            baseColor = '#f59e0b';
-        }
-        
-        // Целевой цвет по режиму
-        let targetColor = baseColor;
-        if (object.mode === 'inactive') {
-            targetColor = '#9ca3af'; // серый
-        } else if (object.mode === 'economy') {
-            targetColor = '#fbbf24'; // желтый
-        } else if (object.mode === 'active') {
-            targetColor = baseColor;
-        } else if (object.mode === 'blocked') {
-            targetColor = '#ef4444'; // красный
-        }
-        
-        // Инициализация текущего цвета
-        if (!object.currentColor) {
-            object.currentColor = targetColor;
-        }
-        
-        // Плавная интерполяция (lerp)
-        object.currentColor = this.interpolateColor(object.currentColor, targetColor, 0.1);
-        
-        // Отрисовка символа
-        ctx.fillStyle = object.currentColor;
-        ctx.font = `${size * 0.8}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(symbol, x, y);
+        // [ЧТО] Привязка обработчика изменения размера
+        // [ЗАЧЕМ] Адаптация под изменение размера окна браузера
+        // [PLAN] Добавить debounce для производительности
+        window.addEventListener('resize', () => this.resizeCanvas());
     }
     
     /**
-     * [ЧТО] Линейная интерполяция между двумя HEX цветами.
-     * [ЗАЧЕМ] Позволяет плавно анимировать переход цвета объекта между режимами.
-     * @param {string} color1 - Начальный цвет (HEX)
-     * @param {string} color2 - Конечный цвет (HEX)
-     * @param {number} t - Коэффициент интерполяции (0..1)
-     * @returns {string} Интерполированный цвет (HEX)
+     * Изменение размера canvas под окно
+     * [ЧТО] Устанавливает размеры canvas равными размеру окна
+     * [ЗАЧЕМ] Игра занимает всё доступное пространство
+     * [PLAN] Добавить полноэкранный режим
      */
-    interpolateColor(color1, color2, t) {
-        const r1 = parseInt(color1.slice(1, 3), 16);
-        const g1 = parseInt(color1.slice(3, 5), 16);
-        const b1 = parseInt(color1.slice(5, 7), 16);
-        
-        const r2 = parseInt(color2.slice(1, 3), 16);
-        const g2 = parseInt(color2.slice(3, 5), 16);
-        const b2 = parseInt(color2.slice(5, 7), 16);
-        
-        const r = Math.round(r1 + (r2 - r1) * t);
-        const g = Math.round(g1 + (g2 - g1) * t);
-        const b = Math.round(b1 + (b2 - b1) * t);
-        
-        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        console.log(`[GridRenderer] Canvas resized to ${this.canvas.width}x${this.canvas.height}`);
     }
-
+    
     /**
-     * [ЧТО] Отрисовка объединённых зон покрытия с удалением пунктира в местах пересечения.
-     * [ЗАЧЕМ] Создаёт эффект единой зоны покрытия вместо набора отдельных кругов.
-     * [PLAN] 2.3. Визуализация покрытия
-     * @param {CanvasRenderingContext2D} ctx - Контекст рисования
-     * @param {string} coverageMode - Режим отрисовки ('load' для контура)
+     * Основная функция отрисовки всего поля
+     * [ЧТО] Очищает canvas и рисует все гексы и постройки
+     * [ЗАЧЕМ] Обновление изображения каждый кадр
+     * [PLAN] Оптимизировать перерисовку только изменённых областей
      */
-    drawCoverageMerged(ctx, coverageMode = 'load') {
-        // Кэш отключён из-за движения камеры (offsetX/offsetY меняются)
-        const useCache = false;
-
-        if (useCache && this.coverageCache && this.coverageCacheValid) {
-            this.coverageCache.forEach((zone, index) => {
-                ctx.save();
-                ctx.shadowColor = zone.color;
-                ctx.shadowBlur = 10;
-                ctx.strokeStyle = `${zone.color}FF`;
-                ctx.lineWidth = 3;
-                ctx.setLineDash([5, 5]);
-
-                zone.paths.forEach(path => {
-                    ctx.beginPath();
-                    path.forEach((point, i) => {
-                        if (i === 0) ctx.moveTo(point.x, point.y);
-                        else ctx.lineTo(point.x, point.y);
-                    });
-                    ctx.stroke();
-                });
-
-                ctx.restore();
-            });
-            return;
+    render() {
+        // [ЧТО] Очистка всего canvas
+        // [ЗАЧЕМ] Удаление предыдущего кадра перед отрисовкой нового
+        // [PLAN] Использовать requestAnimationFrame для плавности
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // [ЧТО] Вычисляем центр экрана для центрирования карты
+        // [ЗАЧЕМ] Карта всегда отображается по центру
+        // [PLAN] Добавить камеру и панорамирование
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        // [ЧТО] Получаем все гексы для отрисовки
+        // [ЗАЧЕМ] Итерируемся по всем гексам сетки
+        // [PLAN] Сортировать гексы для правильного порядка отрисовки
+        const hexes = this.hexGrid.getAllHexes();
+        
+        // [ЧТО] Отрисовка каждого гекса
+        // [ЗАЧЕМ] Показываем все гексы на поле
+        // [PLAN] Добавить кэширование отрисованных гексов
+        hexes.forEach(hex => {
+            // [ЧТО] Вычисляем pixel-координаты центра гекса относительно центра экрана
+            // [ЗАЧЕМ] Позиционируем гекс на экране
+            // [PLAN] Использовать матричные преобразования для камеры
+            hex.x = centerX + hex.q * this.hexGrid.getHexWidth();
+            hex.y = centerY + (hex.r + hex.q / 2) * (this.hexGrid.getHexHeight() * 0.75);
+            
+            // [ЧТО] Рисуем гекс
+            // [ЗАЧЕМ] Базовая визуализация гекса
+            // [PLAN] Добавить текстуры местности
+            this.drawHex(hex);
+            
+            // [ЧТО] Если на гексе есть постройка, рисуем её
+            // [ЗАЧЕМ] Показываем построенные объекты
+            // [PLAN] Добавить анимации построек
+            if (hex.building) {
+                this.drawBuilding(hex);
+            }
+        });
+        
+        // [ЧТО] Отрисовка курсора строительства если выбран тип постройки
+        // [ЗАЧЕМ] Показывает где будет размещена постройка
+        // [PLAN] Добавить проверку валидности позиции
+        if (this.buildingTypeToPlace && this.selectedHexId !== null) {
+            this.drawBuildCursor();
         }
-
-        // Сбор всех активных зон покрытия
-        const coverageZones = [];
-        this.grid.map.forEach((hex, key) => {
-            if (hex.object && (hex.object.mode === 'active' || hex.object.mode === 'economy')) {
-                const center = this.grid.hexToScreen(hex.q, hex.r);
-
-                let color = '#4a9eff';
-                if (hex.object.type === 'Вышка') {
-                    color = '#f59e0b';
-                }
-                if (hex.object.mode === 'economy') {
-                    color = '#fbbf24';
-                }
-
-                const rangeMultiplier = hex.object.mode === 'economy' ? 0.5 : 1.0;
-                const rangePixels = hex.object.range * this.grid.hexSize * this.grid.zoom * rangeMultiplier;
-
-                coverageZones.push({
-                    x: center.x,
-                    y: center.y,
-                    radius: rangePixels,
-                    color: color
-                });
-            }
-        });
-
-        if (coverageZones.length === 0) return;
-
-        const cacheData = [];
-
-        // Отрисовка каждой зоны с проверкой пересечений
-        coverageZones.forEach((zone, index) => {
-            ctx.save();
-            ctx.shadowColor = zone.color;
-            ctx.shadowBlur = 10;
-            ctx.strokeStyle = `${zone.color}FF`;
-            ctx.lineWidth = 3;
-            ctx.setLineDash([5, 5]);
-
-            const step = 2; // Шаг проверки в градусах
-            let isDrawing = false;
-            let currentPath = [];
-
-            for (let angle = 0; angle <= 360; angle += step) {
-                const rad = angle * Math.PI / 180;
-                const testX = zone.x + zone.radius * Math.cos(rad);
-                const testY = zone.y + zone.radius * Math.sin(rad);
-
-                // Проверка попадания точки в другую зону
-                let isInOtherZone = false;
-                for (let j = 0; j < coverageZones.length; j++) {
-                    if (j === index) continue;
-                    const other = coverageZones[j];
-                    const dist = Math.sqrt((testX - other.x) ** 2 + (testY - other.y) ** 2);
-                    if (dist < other.radius) {
-                        isInOtherZone = true;
-                        break;
-                    }
-                }
-
-                if (!isInOtherZone) {
-                    if (!isDrawing) {
-                        ctx.beginPath();
-                        ctx.moveTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
-                        currentPath = [{x: zone.x + zone.radius * Math.cos(rad), y: zone.y + zone.radius * Math.sin(rad)}];
-                        isDrawing = true;
-                    } else {
-                        ctx.lineTo(zone.x + zone.radius * Math.cos(rad), zone.y + zone.radius * Math.sin(rad));
-                        currentPath.push({x: zone.x + zone.radius * Math.cos(rad), y: zone.y + zone.radius * Math.sin(rad)});
-                    }
-                } else {
-                    if (isDrawing) {
-                        ctx.stroke();
-                        if (currentPath.length > 0) {
-                            if (!cacheData[index]) cacheData[index] = {color: zone.color, paths: []};
-                            cacheData[index].paths.push([...currentPath]);
-                        }
-                        isDrawing = false;
-                        currentPath = [];
-                    }
-                }
-            }
-
-            if (isDrawing) {
-                ctx.stroke();
-                if (currentPath.length > 0) {
-                    if (!cacheData[index]) cacheData[index] = {color: zone.color, paths: []};
-                    cacheData[index].paths.push([...currentPath]);
-                }
-            }
-
-            ctx.restore();
-        });
-
-        this.coverageCache = cacheData;
-        this.coverageCacheValid = true;
     }
-
+    
     /**
-     * [ЧТО] Инвалидация кэша зон покрытия.
-     * [ЗАЧЕМ] Вызывается при движении камеры или изменении сети для перерисовки зон.
+     * Отрисовка одного гекса
+     * @param {Object} hex - Объект гекса с координатами
      */
-    invalidateCoverageCache() {
-        this.coverageCacheValid = false;
+    drawHex(hex) {
+        const size = this.hexGrid.getHexSize();
+        const isSelected = hex.id === this.selectedHexId;
+        
+        // [ЧТО] Начинаем путь для рисования шестиугольника
+        // [ЗАЧЕМ] Создаём форму гекса из 6 вершин
+        // [PLAN] Использовать Path2D для переиспользования пути
+        this.ctx.beginPath();
+        
+        // [ЧТО] Вычисляем и добавляем 6 вершин гекса
+        // [ЗАЧЕМ] Шестиугольная форма гекса
+        // [PLAN] Предварительно вычислить вершины для производительности
+        for (let i = 0; i < 6; i++) {
+            const angle = (i * 60) * (Math.PI / 180);
+            const x = hex.x + size * Math.cos(angle);
+            const y = hex.y + size * Math.sin(angle);
+            
+            if (i === 0) {
+                this.ctx.moveTo(x, y);
+            } else {
+                this.ctx.lineTo(x, y);
+            }
+        }
+        
+        this.ctx.closePath();
+        
+        // [ЧТО] Заполняем гекс цветом в зависимости от состояния
+        // [ЗАЧЕМ] Визуальное различие между обычными и выделенными гексами
+        // [PLAN] Добавить цвета для разных типов местности
+        if (isSelected) {
+            this.ctx.fillStyle = 'rgba(74, 158, 255, 0.3)'; // Синий для выделенного
+        } else {
+            this.ctx.fillStyle = 'rgba(100, 100, 100, 0.2)'; // Серый для обычного
+        }
+        this.ctx.fill();
+        
+        // [ЧТО] Рисуем контур гекса
+        // [ЗАЧЕМ] Чёткие границы между гексами
+        // [PLAN] Разная толщина для разных состояний
+        if (isSelected) {
+            this.ctx.strokeStyle = '#4a9eff';
+            this.ctx.lineWidth = 3;
+        } else {
+            this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
+            this.ctx.lineWidth = 1;
+        }
+        this.ctx.stroke();
+    }
+    
+    /**
+     * Отрисовка постройки на гексе
+     * @param {Object} hex - Гекс с постройкой
+     */
+    drawBuilding(hex) {
+        const building = hex.building;
+        const size = this.hexGrid.getHexSize() * 0.6;
+        
+        // [ЧТО] Рисуем прямоугольник постройки в центре гекса
+        // [ЗАЧЕМ] Визуализация построенного объекта
+        // [PLAN] Использовать спрайты или иконки для разных типов
+        this.ctx.fillStyle = building.color || '#4ade80';
+        this.ctx.fillRect(
+            hex.x - size / 2,
+            hex.y - size / 2,
+            size,
+            size
+        );
+        
+        // [ЧТО] Добавляем текст с названием постройки
+        // [ЗАЧЕМ] Идентификация типа постройки
+        // [PLAN] Добавить уровни и индикаторы состояния
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(building.name, hex.x, hex.y);
+    }
+    
+    /**
+     * Отрисовка курсора строительства
+     * [ЧТО] Показывает preview постройки на выбранном гексе
+     * [ЗАЧЕМ] Игрок видит куда разместится постройка
+     * [PLAN] Добавить красный цвет если размещение невозможно
+     */
+    drawBuildCursor() {
+        const hex = this.hexGrid.getHexById(this.selectedHexId);
+        if (!hex || hex.building) return;
+        
+        const size = this.hexGrid.getHexSize() * 0.6;
+        
+        // [ЧТО] Рисуем полупрозрачный прямоугольник
+        // [ЗАЧЕМ] Preview места размещения постройки
+        // [PLAN] Анимировать пульсацию для привлечения внимания
+        this.ctx.fillStyle = 'rgba(74, 158, 255, 0.5)';
+        this.ctx.fillRect(
+            hex.x - size / 2,
+            hex.y - size / 2,
+            size,
+            size
+        );
+        
+        // [ЧТО] Рисуем контур
+        // [ЗАЧЕМ] Чёткие границы зоны размещения
+        // [PLAN] Добавить пунктирную линию
+        this.ctx.strokeStyle = '#4a9eff';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([5, 5]);
+        this.ctx.strokeRect(
+            hex.x - size / 2,
+            hex.y - size / 2,
+            size,
+            size
+        );
+        this.ctx.setLineDash([]);
+    }
+    
+    /**
+     * Установка выбранного гекса
+     * @param {number|null} hexId - ID гекса или null для снятия выделения
+     */
+    setSelectedHex(hexId) {
+        this.selectedHexId = hexId;
+    }
+    
+    /**
+     * Получение выбранного гекса
+     * @returns {number|null} ID выбранного гекса
+     */
+    getSelectedHex() {
+        return this.selectedHexId;
+    }
+    
+    /**
+     * Установка типа постройки для размещения
+     * @param {Object|null} buildingType - Объект типа постройки или null для отмены
+     */
+    setBuildingTypeToPlace(buildingType) {
+        this.buildingTypeToPlace = buildingType;
+    }
+    
+    /**
+     * Получение типа постройки для размещения
+     * @returns {Object|null} Тип постройки
+     */
+    getBuildingTypeToPlace() {
+        return this.buildingTypeToPlace;
+    }
+    
+    /**
+     * Преобразование координат мыши в ID гекса
+     * @param {number} mouseX - X координата мыши
+     * @param {number} mouseY - Y координата мыши
+     * @returns {number|null} ID гекса под курсором или null
+     */
+    getHexAtPosition(mouseX, mouseY) {
+        const hexes = this.hexGrid.getAllHexes();
+        const size = this.hexGrid.getHexSize();
+        
+        // [ЧТО] Проверяем каждый гекс на попадание точки
+        // [ЗАЧЕМ] Определение гекса под курсором мыши
+        // [PLAN] Использовать более эффективный алгоритм поиска
+        for (const hex of hexes) {
+            const dx = mouseX - hex.x;
+            const dy = mouseY - hex.y;
+            
+            // [ЧТО] Простая проверка по расстоянию до центра
+            // [ЗАЧЕМ] Быстрое определение попадания в гекс
+            // [PLAN] Использовать точную проверку внутри шестиугольника
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance <= size * 0.9) {
+                return hex.id;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Очистка рендерера
+     * [ЧТО] Сброс всех состояний
+     * [ЗАЧЕМ] Подготовка к удалению или перезапуску
+     * [PLAN] Добавить деструктор для очистки event listeners
+     */
+    destroy() {
+        this.selectedHexId = null;
+        this.buildingTypeToPlace = null;
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 }
 
-// Экспорт для использования в других модулях
+// [ЧТО] Экспорт класса для использования в других модулях
+// [ЗАЧЕМ] Модульная архитектура требует явного экспорта
+// [PLAN] Использовать ES6 modules в будущем
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = GridRenderer;
 }
