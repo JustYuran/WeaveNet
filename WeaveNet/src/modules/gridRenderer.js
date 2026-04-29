@@ -13,14 +13,16 @@ class GridRenderer {
      * Конструктор рендерера
      * @param {HTMLCanvasElement} canvas - Canvas элемент для отрисовки
      * @param {HexGrid} hexGrid - Объект гексагональной сетки
+     * @param {CameraManager} cameraManager - Менеджер камеры (опционально)
      */
-    constructor(canvas, hexGrid) {
+    constructor(canvas, hexGrid, cameraManager = null) {
         // [ЧТО] Инициализация canvas и контекста
         // [ЗАЧЕМ] Базовая настройка для отрисовки графики
         // [PLAN] Добавить поддержку DPI для ретина-дисплеев
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
         this.hexGrid = hexGrid;
+        this.cameraManager = cameraManager;
         
         // [ЧТО] Текущий выбранный гекс (для подсветки)
         // [ЗАЧЕМ] Визуальная обратная связь при наведении
@@ -72,9 +74,15 @@ class GridRenderer {
         // [PLAN] Использовать requestAnimationFrame для плавности
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
+        // [ЧТО] Применяем трансформацию камеры если она есть
+        // [ЗАЧЕМ] Панорамирование и зум карты
+        if (this.cameraManager) {
+            this.cameraManager.applyTransform(this.ctx);
+        }
+        
         // [ЧТО] Вычисляем центр экрана для центрирования карты
         // [ЗАЧЕМ] Карта всегда отображается по центру
-        // [PLAN] Добавить камеру и панорамирование
+        // [PLAN] Использовать камеру для позиционирования
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         
@@ -122,6 +130,12 @@ class GridRenderer {
         // [PLAN] Добавить проверку валидности позиции
         if (this.buildingTypeToPlace && this.hoveredHexId !== null) {
             this.drawBuildCursor();
+        }
+        
+        // [ЧТО] Сбрасываем трансформацию камеры для UI элементов
+        // [ЗАЧЕМ] Курсор и другие UI элементы рисуются без трансформации
+        if (this.cameraManager) {
+            this.cameraManager.resetTransform(this.ctx);
         }
         
         // [ЧТО] Отрисовка пользователей на гексах
@@ -436,6 +450,17 @@ class GridRenderer {
      * @returns {number|null} ID гекса под курсором или null
      */
     getHexAtPosition(mouseX, mouseY) {
+        // [ЧТО] Преобразуем экранные координаты в мировые если есть камера
+        // [ЗАЧЕМ] Учёт зума и панорамирования для правильного определения гекса
+        let worldX = mouseX;
+        let worldY = mouseY;
+        
+        if (this.cameraManager) {
+            const worldPos = this.cameraManager.screenToWorld(mouseX, mouseY);
+            worldX = worldPos.x;
+            worldY = worldPos.y;
+        }
+        
         const hexes = this.hexGrid.getAllHexes();
         const size = this.hexGrid.getHexSize();
         
@@ -443,8 +468,8 @@ class GridRenderer {
         // [ЗАЧЕМ] Определение гекса под курсором мыши
         // [PLAN] Использовать более эффективный алгоритм поиска
         for (const hex of hexes) {
-            const dx = mouseX - hex.x;
-            const dy = mouseY - hex.y;
+            const dx = worldX - hex.x;
+            const dy = worldY - hex.y;
             
             // [ЧТО] Простая проверка по расстоянию до центра
             // [ЗАЧЕМ] Быстрое определение попадания в гекс
