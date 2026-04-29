@@ -94,18 +94,6 @@ class Buildings {
     }
 
     /**
-     * Проверка возможности строительства
-     * @param {Object} resources - Текущие ресурсы игрока
-     * @param {string} typeId - ID типа постройки
-     * @returns {boolean} true если можно строить
-     */
-    canBuild(resources, typeId) {
-        const type = this.getBuildingTypeById(typeId);
-        if (!type) return false;
-        return resources.info >= type.cost;
-    }
-
-    /**
      * Получение стоимости улучшения
      * @param {Object} building - Объект постройки
      * @returns {number} Стоимость улучшения

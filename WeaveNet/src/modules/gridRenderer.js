@@ -117,6 +117,13 @@ class GridRenderer {
             // [PLAN] Добавить текстуры местности
             this.drawHex(hex);
             
+            // [ЧТО] Если на гексе есть преграда, рисуем её
+            // [ЗАЧЕМ] 1.3.1 - Визуализация гор, пропастей и воды
+            // [PLAN] 1.3.2 - Добавить анимации для преград
+            if (hex.obstacle) {
+                this.drawObstacle(hex);
+            }
+            
             // [ЧТО] Если на гексе есть постройка, рисуем её
             // [ЗАЧЕМ] Показываем построенные объекты
             // [PLAN] Добавить анимации построек
@@ -262,6 +269,137 @@ class GridRenderer {
             'snow': '#e8f4f8'       // Белоснежные пустоши
         };
         return terrainColors[terrain] || '#4a7c23'; // По умолчанию равнина
+    }
+    
+    /**
+     * Получение цвета для преграды рельефа
+     * @param {string|null} obstacle - Тип преграды (null, 'mountain', 'chasm', 'water')
+     * @returns {string} HEX цвет или null если преграды нет
+     * 
+     * [ЧТО] Возвращает цвет для визуализации преграды
+     * [ЗАЧЕМ] 1.3.1 - Визуальное выделение гор, пропастей и воды
+     * [PLAN] 1.3.2 - Добавить текстуры и иконки для преград
+     */
+    getObstacleColor(obstacle) {
+        if (!obstacle) return null;
+        
+        const obstacleColors = {
+            'mountain': '#5a5a6a',  // Серые горы с синим оттенком
+            'chasm': '#2d2d3a',     // Тёмная пропасть
+            'water': '#4a9eff'      // Голубая вода
+        };
+        return obstacleColors[obstacle] || null;
+    }
+    
+    /**
+     * Отрисовка преграды на гексе
+     * @param {Object} hex - Объект гекса с преградой
+     * 
+     * [ЧТО] Рисует визуальное представление преграды (горы, пропасти, воды)
+     * [ЗАЧЕМ] 1.3.1 - Игрок видит непроходимые участки карты
+     * [PLAN] 1.3.2 - Добавить 3D эффект для гор, анимацию для воды
+     */
+    drawObstacle(hex) {
+        if (!hex.obstacle) return;
+        
+        const size = this.hexGrid.getHexSize();
+        const obstacleColor = this.getObstacleColor(hex.obstacle);
+        
+        if (!obstacleColor) return;
+        
+        // [ЧТО] Рисуем преграду поверх цвета местности
+        // [ЗАЧЕМ] Визуальное выделение непроходимых гексов
+        // [PLAN] 1.3.1 - Разные стили для разных типов преград
+        
+        if (hex.obstacle === 'mountain') {
+            // [ЧТО] Горы - рисуем треугольную "вершину" в центре
+            // [ЗАЧЕМ] Ассоциация с горной вершиной
+            // [PLAN] Добавить градиент для объёма
+            this.ctx.fillStyle = obstacleColor;
+            this.ctx.beginPath();
+            const mountainSize = size * 0.6;
+            this.ctx.moveTo(hex.x, hex.y - mountainSize * 0.8);
+            this.ctx.lineTo(hex.x - mountainSize * 0.7, hex.y + mountainSize * 0.4);
+            this.ctx.lineTo(hex.x + mountainSize * 0.7, hex.y + mountainSize * 0.4);
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Добавляем светлую вершину (снег на вершине)
+            this.ctx.fillStyle = '#a8a8b8';
+            this.ctx.beginPath();
+            this.ctx.moveTo(hex.x, hex.y - mountainSize * 0.8);
+            this.ctx.lineTo(hex.x - mountainSize * 0.25, hex.y - mountainSize * 0.2);
+            this.ctx.lineTo(hex.x + mountainSize * 0.25, hex.y - mountainSize * 0.2);
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+        } else if (hex.obstacle === 'chasm') {
+            // [ЧТО] Пропасть - тёмная область с рваными краями
+            // [ЗАЧЕМ] Визуализация разлома/пустоты
+            // [PLAN] Добавить зияющий эффект
+            this.ctx.fillStyle = obstacleColor;
+            this.ctx.beginPath();
+            const chasmSize = size * 0.5;
+            
+            // Рисуем несколько неровных полигонов для эффекта разлома
+            for (let i = 0; i < 3; i++) {
+                const offsetX = (i - 1) * chasmSize * 0.6;
+                const offsetY = (Math.random() - 0.5) * chasmSize * 0.3;
+                this.ctx.ellipse(
+                    hex.x + offsetX,
+                    hex.y + offsetY,
+                    chasmSize * 0.4,
+                    chasmSize * 0.25,
+                    Math.random() * Math.PI,
+                    0,
+                    Math.PI * 2
+                );
+            }
+            this.ctx.fill();
+            
+            // Тени по краям
+            this.ctx.strokeStyle = '#1a1a2a';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+        } else if (hex.obstacle === 'water') {
+            // [ЧТО] Вода - полупрозрачная синяя поверхность с волнами
+            // [ЗАЧЕМ] Визуализация водной преграды
+            // [PLAN] Анимировать волны
+            this.ctx.fillStyle = 'rgba(74, 158, 255, 0.6)';
+            this.ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * 60) * (Math.PI / 180);
+                const x = hex.x + size * 0.7 * Math.cos(angle);
+                const y = hex.y + size * 0.7 * Math.sin(angle);
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            // Рисуем волны
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            this.ctx.lineWidth = 1.5;
+            const waveCount = 3;
+            for (let w = 0; w < waveCount; w++) {
+                const waveY = hex.y - size * 0.3 + w * size * 0.3;
+                this.ctx.beginPath();
+                for (let wx = 0; wx < size * 1.2; wx += 5) {
+                    const waveX = hex.x - size * 0.5 + wx;
+                    const waveOffset = Math.sin(wx * 0.1 + w) * 3;
+                    if (wx === 0) {
+                        this.ctx.moveTo(waveX, waveY + waveOffset);
+                    } else {
+                        this.ctx.lineTo(waveX, waveY + waveOffset);
+                    }
+                }
+                this.ctx.stroke();
+            }
+        }
     }
     
     /**
