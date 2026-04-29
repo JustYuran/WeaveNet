@@ -1,1 +1,17 @@
-Nothing should be ignored based on the provided file changes. The only modified file is 'WeaveNet/src/game.js', which is a source code file and should not be added to .gitignore.
+```
+# Logs and temp files
+*.log
+*.tmp
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Editors
+.vscode/
+.idea/
+
+# Original rules preserved
+*.log
+```
