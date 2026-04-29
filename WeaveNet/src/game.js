@@ -101,6 +101,11 @@ class HexGrid {
             
             // Рисуем гекс
             this.drawHex(ctx, center.x, center.y, this.hexSize * this.zoom, color, hex.obstacle);
+            
+            // Рисуем объект на гексе
+            if (hex.object) {
+                this.drawObject(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+            }
         });
         
         // Затем рисуем зоны покрытия всех объектов
@@ -163,8 +168,10 @@ class HexGrid {
 
     // Draw object icon on hex (without coverage zone)
     drawObjectIcon(ctx, x, y, size, object) {
-        // Define symbol and color based on object type
-        let symbol = '📶'; // Router
+    // Рисование объекта на гексе
+    drawObject(ctx, x, y, size, object) {
+        // Определение символа и цвета в зависимости от типа объекта
+        let symbol = '📶'; // Роутер
         let color = '#4a9eff';
         if (object.type === 'Роутер') {
             symbol = '📶'; // Router
@@ -228,6 +235,21 @@ class HexGrid {
     drawObject(ctx, x, y, size, object) {
         this.drawObjectIcon(ctx, x, y, size, object);
         this.drawCoverage(ctx, x, y, size, object);
+        
+        // Рисуем зону покрытия для активных режимов
+        if (object.mode === 'active' || object.mode === 'economy') {
+            const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
+            const rangePixels = object.range * size * rangeMultiplier;
+            
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
+            gradient.addColorStop(0, `${modeColor}40`); // 25% прозрачности
+            gradient.addColorStop(1, `${modeColor}00`); // полностью прозрачный
+            
+            ctx.beginPath();
+            ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
     }
 
     // Проверка возможности размещения
