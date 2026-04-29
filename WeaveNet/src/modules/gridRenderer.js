@@ -629,7 +629,21 @@ class GridRenderer {
      * [PLAN] Добавить анимацию движения, разные типы пользователей
      */
     drawUsers() {
+        // [ЧТО] Проверяем наличие userManager
+        // [ЗАЧЕМ] Защита от ошибок если userManager не инициализирован
+        // [PLAN] Сделать userManager обязательным параметром конструктора
+        if (!this.userManager) {
+            console.warn('[GridRenderer.drawUsers] userManager не установлен');
+            return;
+        }
+        
         const users = this.userManager.getAllUsers();
+        
+        // [ЧТО] Логируем количество пользователей для отладки
+        // [ЗАЧЕМ] Помогает понять генерируются ли пользователи
+        if (users.length > 0) {
+            console.log(`[GridRenderer.drawUsers] Отрисовка ${users.length} пользователей`);
+        }
         
         // [ЧТО] Группируем пользователей по гексам для отрисовки
         // [ЗАЧЕМ] Эффективная отрисовка всех пользователей
@@ -637,20 +651,32 @@ class GridRenderer {
         const hexUserMap = {};
         
         users.forEach(user => {
-            if (!hexUserMap[user.hexId]) {
-                hexUserMap[user.hexId] = [];
+            // [ЧТО] Преобразуем hexId к строке для использования как ключ объекта
+            // [ЗАЧЕМ] Ключи объекта всегда строки, нужна консистентность
+            const hexKey = String(user.hexId);
+            if (!hexUserMap[hexKey]) {
+                hexUserMap[hexKey] = [];
             }
-            hexUserMap[user.hexId].push(user);
+            hexUserMap[hexKey].push(user);
         });
         
         // [ЧТО] Отрисовываем пользователей на каждом гексе
         // [ЗАЧЕМ] Показываем всех пользователей на карте
         // [PLAN] Добавить layout для красивого расположения (сетка, круг)
-        Object.keys(hexUserMap).forEach(hexId => {
-            const hex = this.hexGrid.getHexById(parseInt(hexId));
-            if (!hex) return;
+        Object.keys(hexUserMap).forEach(hexKey => {
+            // [ЧТО] Преобразуем ключ обратно в число для поиска гекса
+            // [ЗАЧЕМ] getHexById ожидает числовой ID
+            const hexId = parseInt(hexKey, 10);
+            const hex = this.hexGrid.getHexById(hexId);
             
-            const usersOnHex = hexUserMap[hexId];
+            // [ЧТО] Пропускаем отрисовку если гекс не найден
+            // [ЗАЧЕМ] Защита от ошибок при несуществующих гексах
+            if (!hex) {
+                console.warn(`[GridRenderer.drawUsers] Гекс #${hexId} не найден`);
+                return;
+            }
+            
+            const usersOnHex = hexUserMap[hexKey];
             const userCount = usersOnHex.length;
             
             // [ЧТО] Вычисляем размер кружка пользователя
@@ -682,7 +708,11 @@ class GridRenderer {
                     0,
                     Math.PI * 2
                 );
-                this.ctx.fillStyle = user.color;
+                
+                // [ЧТО] Используем цвет статуса вместо случайного цвета
+                // [ЗАЧЕМ] 2.1.2 - Визуальное отображение статуса цветом
+                // [PLAN] Добавить анимацию пульсации для активных статусов
+                this.ctx.fillStyle = this.userManager.getStatusColor(user.status);
                 this.ctx.fill();
                 this.ctx.strokeStyle = 'white';
                 this.ctx.lineWidth = 1;
