@@ -55,12 +55,24 @@ class HexGrid {
         return { x, y };
     }
 
-    // Инициализация карты
+    // Инициализация карты с формой похожей на Россию
+    // [ЧТО] Генерация гексагональной карты с очертаниями, напоминающими территорию России.
+    // [ЗАЧЕМ] Визуальная схожесть с реальной картой России улучшает погружение и соответствует плану.
+    // [ERROR] Ошибка 2 - в плане отмечено что карта похожа на Россию, но карта не похожа
+    // [PLAN] 1.4. Схожесть карты на реальную карту
     initMap(width = 20, height = 15) {
         for (let q = -width; q <= width; q++) {
             for (let r = -height; r <= height; r++) {
                 if (Math.abs(q + r) <= Math.max(width, height)) {
                     const key = this.getHexKey(q, r);
+                    
+                    // [ЧТО] Проверка формы карты для создания очертаний похожих на Россию.
+                    // [ЗАЧЕМ] Исключаем гексы за пределами "российской" формы карты.
+                    // [ERROR] Ошибка 2 - карта должна быть похожа на Россию
+                    if (!this.isInRussiaShape(q, r, width, height)) {
+                        continue; // Пропускаем гексы вне формы России
+                    }
+                    
                     // Генерация типа местности
                     const rand = Math.random();
                     let terrain = 'plain';
@@ -84,6 +96,40 @@ class HexGrid {
                 }
             }
         }
+    }
+    
+    // [ЧТО] Проверка принадлежности гекса к форме "Россия".
+    // [ЗАЧЕМ] Создаёт очертания карты, визуально похожие на территорию России.
+    // [ERROR] Ошибка 2 - карта должна быть похожа на Россию
+    // [PLAN] 1.4. Схожесть карты на реальную карту
+    isInRussiaShape(q, r, width, height) {
+        // Упрощённая модель формы России на основе координат q, r
+        // Россия вытянута с запада на восток (горизонтально) и имеет неравномерную высоту
+        
+        // Нормализованные координаты (-1 до 1)
+        const normQ = q / width;
+        const normR = r / height;
+        
+        // Западная часть (Европа) - более широкая
+        if (normQ < -0.3) {
+            // Ограничиваем по вертикали для европейской части
+            return Math.abs(normR) < 0.7;
+        }
+        
+        // Центральная часть (Сибирь) - вытянутая
+        if (normQ >= -0.3 && normQ < 0.5) {
+            // Более узкая по вертикали, но длинная
+            return Math.abs(normR) < 0.5;
+        }
+        
+        // Восточная часть (Дальний Восток) - сужается
+        if (normQ >= 0.5) {
+            // Ещё более узкая, с плавным сужением к краю
+            const maxR = 0.6 - (normQ - 0.5) * 0.5;
+            return Math.abs(normR) < maxR;
+        }
+        
+        return true;
     }
 
     // Отрисовка сетки
@@ -508,6 +554,14 @@ class Game {
         this.coverageCache = null;
         this.coverageCacheValid = false;
         
+        // [ЧТО] Таймер и интервал для автосохранения каждые 5 минут.
+        // [ЗАЧЕМ] Сохраняет прогресс игрока автоматически, предотвращая потерю данных при закрытии браузера.
+        //          Интервал 5 минут выбран как баланс между частотой сохранений и производительностью.
+        // [TODO] 8. Реализовать автосохранение каждые 5 минут игры
+        this.autoSaveInterval = 300; // 5 минут в секундах
+        this.autoSaveTimer = 0;
+        this.lastSaveTime = 0;
+        
         this.init();
     }
 
@@ -521,6 +575,9 @@ class Game {
         
         // Инициализация карты (увеличено в 10 раз больше гексов)
         this.grid.initMap(47, 38); // Было (15, 12), увеличили примерно в sqrt(10) раз для каждой оси
+        
+        // Попытка загрузки сохраненной игры
+        this.loadGame();
         
         // Обработчики событий
         this.setupEventListeners();
@@ -562,6 +619,11 @@ class Game {
                 this.grid.offsetY += dy;
                 this.lastMouseX = e.clientX;
                 this.lastMouseY = e.clientY;
+                // [ЧТО] Инвалидация кэша зон покрытия при движении карты.
+                // [ЗАЧЕМ] Зоны покрытия должны перерисовываться при изменении позиции камеры,
+                //          так как их экранные координаты зависят от offsetX/offsetY.
+                // [ERROR] Ошибка 1 - при движение карты зона покрытия не двигается
+                this.coverageCacheValid = false;
             }
         });
 
@@ -795,7 +857,104 @@ class Game {
         this.energy = Math.max(0, this.energy);
         this.info = Math.max(0, this.info);
         
+        // [ЧТО] Обновление таймера автосохранения и выполнение сохранения каждые 5 минут.
+        // [ЗАЧЕМ] Автоматически сохраняет прогресс игрока в localStorage для предотвращения потери данных.
+        //          Сохранение включает ресурсы, время игры и состояние всех гексов с объектами.
+        // [TODO] 8. Реализовать автосохранение каждые 5 минут игры
+        this.autoSaveTimer += deltaTime * this.speed;
+        if (this.autoSaveTimer >= this.autoSaveInterval) {
+            this.autoSave();
+            this.autoSaveTimer = 0;
+        }
+        
         this.updateUI();
+    }
+    
+    // [ЧТО] Метод автосохранения состояния игры в localStorage.
+    // [ЗАЧЕМ] Сохраняет все важные данные игры: ресурсы, время, позицию камеры, зум и состояние карты.
+    //          Позволяет игроку возобновить игру после перезагрузки страницы.
+    // [TODO] 8. Реализовать автосохранение каждые 5 минут игры
+    autoSave() {
+        const gameState = {
+            info: this.info,
+            energy: this.energy,
+            gameTime: this.gameTime,
+            offsetX: this.grid.offsetX,
+            offsetY: this.grid.offsetY,
+            zoom: this.grid.zoom,
+            mapState: []
+        };
+        
+        // Сохраняем только гексы с объектами для экономии места
+        this.grid.map.forEach((hex, key) => {
+            if (hex.object) {
+                gameState.mapState.push({
+                    key: key,
+                    object: hex.object
+                });
+            }
+        });
+        
+        try {
+            localStorage.setItem('weaveNetSave', JSON.stringify(gameState));
+            console.log('[AutoSave] Игра сохранена успешно');
+        } catch (e) {
+            console.error('[AutoSave] Ошибка сохранения:', e);
+        }
+    }
+    
+    // [ЧТО] Метод загрузки сохраненного состояния игры из localStorage.
+    // [ЗАЧЕМ] Восстанавливает прогресс игрока после перезагрузки страницы или при запуске игры.
+    //          Обрабатывает возможные ошибки при чтении поврежденных данных.
+    // [TODO] 9. Добавить обработку ошибок при загрузке сохраненной конфигурации
+    loadGame() {
+        try {
+            const savedData = localStorage.getItem('weaveNetSave');
+            if (!savedData) {
+                console.log('[LoadGame] Нет сохраненных данных');
+                return false;
+            }
+            
+            const gameState = JSON.parse(savedData);
+            
+            // Восстановление ресурсов
+            this.info = gameState.info || 100;
+            this.energy = gameState.energy || 50;
+            this.gameTime = gameState.gameTime || 0;
+            
+            // Восстановление камеры
+            this.grid.offsetX = gameState.offsetX || this.canvas.width / 2;
+            this.grid.offsetY = gameState.offsetY || this.canvas.height / 2;
+            this.grid.zoom = gameState.zoom || 1;
+            
+            // Восстановление объектов на карте
+            if (gameState.mapState && Array.isArray(gameState.mapState)) {
+                // Очищаем существующие объекты
+                this.grid.map.forEach(hex => {
+                    hex.object = null;
+                });
+                
+                // Восстанавливаем объекты из сохранения
+                gameState.mapState.forEach(savedHex => {
+                    const [q, r] = savedHex.key.split(',').map(Number);
+                    const hex = this.grid.getHex(q, r);
+                    if (hex) {
+                        hex.object = savedHex.object;
+                    }
+                });
+            }
+            
+            // Инвалидация кэша покрытия после загрузки
+            this.coverageCacheValid = false;
+            
+            console.log('[LoadGame] Игра загружена успешно');
+            this.updateUI();
+            return true;
+        } catch (e) {
+            console.error('[LoadGame] Ошибка загрузки:', e);
+            // При ошибке загрузки игра продолжается с текущим состоянием
+            return false;
+        }
     }
 
     render() {
