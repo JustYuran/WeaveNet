@@ -36,6 +36,11 @@ class UserManager {
         // [PLAN] Настроить через конфиг
         this.maxUsers = Math.floor(hexGrid.getAllHexes().length * 1.5);
         
+        // [ЧТО] Минимальное начальное количество пользователей (0.7 * число гексов)
+        // [ЗАЧЕМ] Базовое заполнение карты для старта игры
+        // [PLAN] Использовать для populateInitialUsers по умолчанию
+        this.minInitialUsers = Math.floor(hexGrid.getAllHexes().length * 0.7);
+        
         // [ЧТО] Максимум пользователей на один гекс
         // [ЗАЧЕМ] Ограничение заполненности каждого гекса
         // [PLAN] Сделать настраиваемым параметром
