@@ -246,7 +246,7 @@ class UserManager {
      * @param {number} hexId - ID гекса
      * @returns {Array} Массив пользователей на гексе
      */
-    getUsersOnHex(hexId) {
+    _getUsersOnHex(hexId) {
         return this.users.filter(user => user.hexId === hexId);
     }
     
@@ -336,6 +336,17 @@ class UserManager {
         }
         
         console.log(`[UserManager] Создано ${created} пользователей из ${count} запланированных`);
+    }
+    
+    /**
+     * Получение пользователей на конкретном гексе (публичный метод)
+     * [ЧТО] Фильтрует пользователей по ID гекса
+     * [ЗАЧЕМ] Узнать кто находится на гексе (используется в game.js)
+     * @param {number} hexId - ID гекса
+     * @returns {Array} Массив пользователей на гексе
+     */
+    getUsersOnHex(hexId) {
+        return this.users.filter(user => user.hexId === hexId);
     }
 }
 

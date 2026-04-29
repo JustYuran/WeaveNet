@@ -135,6 +135,30 @@ class GridRenderer {
         const size = this.hexGrid.getHexSize();
         const isSelected = hex.id === this.selectedHexId;
         
+        // [ЧТО] Рисуем свечение для выделенного гекса
+        // [ЗАЧЕМ] Визуальный эффект выделения
+        // [PLAN] Добавить анимацию пульсации
+        if (isSelected) {
+            this.ctx.save();
+            this.ctx.shadowColor = '#4a9eff';
+            this.ctx.shadowBlur = 20;
+            this.ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * 60) * (Math.PI / 180);
+                const x = hex.x + size * Math.cos(angle);
+                const y = hex.y + size * Math.sin(angle);
+                if (i === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.closePath();
+            this.ctx.fillStyle = 'rgba(74, 158, 255, 0.4)';
+            this.ctx.fill();
+            this.ctx.restore();
+        }
+        
         // [ЧТО] Начинаем путь для рисования шестиугольника
         // [ЗАЧЕМ] Создаём форму гекса из 6 вершин
         // [PLAN] Использовать Path2D для переиспользования пути

@@ -94,12 +94,112 @@
         
         #canvas-container {
             width: 100%;
-            height: 100%;
+            height: calc(100% - 180px);
             overflow: hidden;
         }
         
         canvas {
             display: block;
+        }
+        
+        #bottom-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 160px;
+            background: rgba(0, 0, 0, 0.9);
+            border-top: 2px solid #4a9eff;
+            padding: 15px 20px;
+            z-index: 100;
+            color: white;
+            display: flex;
+            gap: 20px;
+        }
+        
+        #hex-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .hex-info-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4a9eff;
+            margin-bottom: 5px;
+        }
+        
+        .hex-info-row {
+            display: flex;
+            gap: 15px;
+            font-size: 14px;
+        }
+        
+        .hex-info-label {
+            color: #aaa;
+            min-width: 120px;
+        }
+        
+        .hex-info-value {
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        #hex-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+            min-width: 200px;
+        }
+        
+        .action-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #4a9eff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #3a8eef;
+        }
+        
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+        
+        .btn-disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+        }
+        
+        #no-selection-message {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #888;
+            font-style: italic;
+        }
+        
+        .hidden {
+            display: none !important;
         }
         
         #context-panel {
@@ -299,6 +399,40 @@
         <!-- Канвас для рендеринга -->
         <div id="canvas-container">
             <canvas id="game-canvas"></canvas>
+        </div>
+        
+        <!-- Нижняя панель с информацией о гексе -->
+        <div id="bottom-panel">
+            <div id="no-selection-message">
+                Выберите гекс на карте, чтобы увидеть информацию
+            </div>
+            <div id="hex-info" class="hidden">
+                <div class="hex-info-title" id="hex-title">Гекс #0</div>
+                <div class="hex-info-row">
+                    <span class="hex-info-label">Координаты:</span>
+                    <span class="hex-info-value" id="hex-coords">(0, 0)</span>
+                </div>
+                <div class="hex-info-row">
+                    <span class="hex-info-label">Тип местности:</span>
+                    <span class="hex-info-value" id="hex-terrain">Равнина</span>
+                </div>
+                <div class="hex-info-row">
+                    <span class="hex-info-label">Постройка:</span>
+                    <span class="hex-info-value" id="hex-building">Нет</span>
+                </div>
+                <div class="hex-info-row">
+                    <span class="hex-info-label">Пользователей:</span>
+                    <span class="hex-info-value" id="hex-users">0</span>
+                </div>
+                <div class="hex-info-row">
+                    <span class="hex-info-label">Соседей:</span>
+                    <span class="hex-info-value" id="hex-neighbors">0</span>
+                </div>
+            </div>
+            <div id="hex-actions" class="hidden">
+                <button class="action-btn btn-primary" id="btn-select-build">Построить</button>
+                <button class="action-btn btn-danger hidden" id="btn-demolish">Снести постройку</button>
+            </div>
         </div>
         
         <!-- Контекстная панель (удалена - теперь панель построек сверху) -->
