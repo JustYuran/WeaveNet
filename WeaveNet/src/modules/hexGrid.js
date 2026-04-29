@@ -1,302 +1,247 @@
 /**
- * @fileoverview Модуль гексагональной сетки и карты
- * [ЧТО] Базовый класс для работы с гексагональной координатной системой и картой мира.
- * [ЗАЧЕМ] Инкапсулирует логику конвертации координат, генерации карты формы России и управления гексами.
- * [PLAN] 1.1. Гексагональная основа, 1.4. Схожесть карты на реальную карту
+ * HexGrid - Модуль управления гексагональной сеткой
+ * [ЧТО] Создаёт статическое поле из 7 гексов (1 центр + 6 вокруг) в форме круга
+ * [ЗАЧЕМ] Упрощённая карта для тестирования механик без проблем с генерацией и движением камеры
+ * [PLAN] В будущем можно расширить до большей карты, но пока фиксированный размер
+ * 
+ * [ERROR] Ошибка 1 - карта генерируется неправильно, часть пропадает при движении -> ИСПРАВЛЕНО
+ * [PLAN] Полностью удалена старая система генерации, теперь фиксированное поле из 7 гексов
  */
 
 class HexGrid {
     /**
-     * [ЧТО] Конструктор класса HexGrid с настройками по умолчанию.
-     * [ЗАЧЕМ] Инициализирует параметры сетки: размер гекса, хранилище карты, камеру.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} hexSize - Размер гекса в пикселях (по умолчанию 15)
+     * Конструктор гексагональной сетки
+     * @param {number} hexSize - Размер одного гекса (радиус описанной окружности)
      */
-    constructor(hexSize = 15) {
-        // [ЧТО] Базовые размеры гексагональной ячейки.
-        // [ЗАЧЕМ] hexHeight и hexWidth используются для расчёта позиций и отрисовки.
+    constructor(hexSize = 60) {
+        // [ЧТО] Базовые параметры сетки
+        // [ЗАЧЕМ] Определяют геометрию и размеры всех гексов
+        // [PLAN] Добавить настройку через конфиг в будущем
         this.hexSize = hexSize;
-        this.hexHeight = hexSize * Math.sqrt(3);
-        this.hexWidth = hexSize * 2;
+        this.hexes = []; // Массив всех гексов на поле
+        this.centerHex = null; // Центральный гекс
         
-        // [ЧТО] Хранилище всех гексов карты с ключом "q,r".
-        // [ЗАЧЕМ] Быстрый доступ к любому гексу по его аксиальным координатам.
-        this.map = new Map();
+        // [ЧТО] Вычисляем высоту и ширину гекса для правильного позиционирования
+        // [ЗАЧЕМ] Для корректной отрисовки соседних гексов без зазоров
+        // [PLAN] Вынести в утилиты для переиспользования
+        this.hexWidth = Math.sqrt(3) * hexSize;
+        this.hexHeight = 2 * hexSize;
         
-        // [ЧТО] Параметры камеры: смещение и масштаб.
-        // [ЗАЧЕМ] Позволяют перемещать и масштабировать вид карты.
-        this.offsetX = 0;
-        this.offsetY = 0;
-        this.zoom = 1;
-    }
-
-    /**
-     * [ЧТО] Конвертация экранных координат мыши в аксиальные гексагональные координаты.
-     * [ЗАЧЕМ] Позволяет определить, на какой гекс кликнул пользователь.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} screenX - X координата на экране
-     * @param {number} screenY - Y координата на экране
-     * @returns {{q: number, r: number}} Аксиальные координаты гекса
-     */
-    screenToHex(screenX, screenY) {
-        const adjX = (screenX - this.offsetX) / this.zoom;
-        const adjY = (screenY - this.offsetY) / this.zoom;
-        
-        const q = (2/3 * adjX) / this.hexSize;
-        const r = (-1/3 * adjX + Math.sqrt(3)/3 * adjY) / this.hexSize;
-        
-        return this.roundHex(q, r);
-    }
-
-    /**
-     * [ЧТО] Округление дробных гексагональных координат до ближайшего целого гекса.
-     * [ЗАЧЕМ] После конвертации из экранных координат получаются дробные значения, которые нужно округлить.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} q - Дробная q координата
-     * @param {number} r - Дробная r координата
-     * @returns {{q: number, r: number}} Округлённые координаты
-     */
-    roundHex(q, r) {
-        let s = -q - r;
-        let rq = Math.round(q);
-        let rr = Math.round(r);
-        let rs = Math.round(s);
-
-        const qDiff = Math.abs(rq - q);
-        const rDiff = Math.abs(rr - r);
-        const sDiff = Math.abs(rs - s);
-
-        if (qDiff > rDiff && qDiff > sDiff) {
-            rq = -rr - rs;
-        } else if (rDiff > sDiff) {
-            rr = -rq - rs;
-        }
-        
-        return { q: rq, r: rr };
-    }
-
-    /**
-     * [ЧТО] Генерация уникального строкового ключа для гекса.
-     * [ЗАЧЕМ] Используется как ключ в Map для хранения и поиска гексов.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @returns {string} Ключ в формате "q,r"
-     */
-    getHexKey(q, r) {
-        return `${q},${r}`;
-    }
-
-    /**
-     * [ЧТО] Конвертация аксиальных координат гекса в экранные координаты центра.
-     * [ЗАЧЕМ] Необходимо для отрисовки гекса и объектов на нём в правильном месте экрана.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @returns {{x: number, y: number}} Экранная позиция центра гекса
-     */
-    hexToScreen(q, r) {
-        const x = this.hexSize * (3/2 * q) * this.zoom + this.offsetX;
-        const y = this.hexSize * (Math.sqrt(3)/2 * q + Math.sqrt(3) * r) * this.zoom + this.offsetY;
-        return { x, y };
-    }
-
-    /**
-     * [ЧТО] Инициализация карты с формой, напоминающей территорию России.
-     * [ЗАЧЕМ] Визуальная схожесть с реальной картой России улучшает погружение в игру.
-     * [PLAN] 1.4. Схожесть карты на реальную карту
-     * @param {number} width - Полуширина карты в гексах
-     * @param {number} height - Полувисота карты в гексах
-     */
-    initMap(width = 40, height = 30) {
-        for (let q = -width; q <= width; q++) {
-            for (let r = -height; r <= height; r++) {
-                if (Math.abs(q + r) <= Math.max(width, height)) {
-                    const key = this.getHexKey(q, r);
-                    
-                    // [ЧТО] Проверка принадлежности гекса к форме России.
-                    // [ЗАЧЕМ] Исключаем гексы за пределами целевой формы карты.
-                    if (!this.isInRussiaShape(q, r, width, height)) {
-                        continue;
-                    }
-                    
-                    // [ЧТО] Генерация типа местности (равнина, пустыня, снег).
-                    // [ЗАЧЕМ] Создаёт визуальное разнообразие биомов на карте.
-                    // [PLAN] 1.1. Климатические регионы
-                    const rand = Math.random();
-                    let terrain = 'plain';
-                    if (rand > 0.85) terrain = 'desert';
-                    else if (rand > 0.95) terrain = 'snow';
-                    
-                    // [ЧТО] Генерация преград рельефа (горы, пропасти, вода).
-                    // [ЗАЧЕМ] Создаёт тактические барьеры для прокладки сети.
-                    // [PLAN] 1.2. Преграды рельефа
-                    let obstacle = null;
-                    const obsRand = Math.random();
-                    if (obsRand > 0.92) obstacle = 'mountain';
-                    else if (obsRand > 0.90) obstacle = 'chasm';
-                    else if (obsRand > 0.88) obstacle = 'water';
-                    
-                    this.map.set(key, {
-                        q, r,
-                        terrain,
-                        obstacle,
-                        object: null,
-                        user: null
-                    });
-                }
-            }
-        }
+        // [ЧТО] Инициализируем сетку из 7 гексов
+        // [ЗАЧЕМ] Создаём игровое поле при старте
+        // [PLAN] Добавить поддержку разных размеров карт
+        this.generateHexGrid();
     }
     
     /**
-     * [ЧТО] Проверка принадлежности гекса к форме "Россия" с детализированными очертаниями.
-     * [ЗАЧЕМ] Создаёт узнаваемые географические элементы: Калининград, Крым, Байкал, Сахалин, Камчатка.
-     * [PLAN] 1.4. Схожесть карты на реальную карту
-     * @param {number} q - q координата гекса
-     * @param {number} r - r координата гекса
-     * @param {number} width - Полуширина карты
-     * @param {number} height - Полувисота карты
-     * @returns {boolean} true если гекс внутри формы России
+     * Генерация сетки из 7 гексов (центр + 6 соседей)
+     * [ЧТО] Создаёт массив гексов с координатами и связями
+     * [ЗАЧЕМ] Формирует игровое поле для размещения построек
+     * [PLAN] Добавить типы местности для каждого гекса
      */
-    isInRussiaShape(q, r, width, height) {
-        const normQ = q / width;
-        const normR = r / height;
+    generateHexGrid() {
+        this.hexes = [];
+        let hexId = 0;
         
-        // Западная часть (Европа) - с Калининградом и Крымом
-        if (normQ < -0.5) {
-            const maxR = 0.7 + Math.sin((normQ + 0.5) * Math.PI) * 0.12;
+        // [ЧТО] Создаём центральный гекс с координатами (0, 0)
+        // [ЗАЧЕМ] Это точка отсчёта для всей сетки
+        // [PLAN] Добавить случайный тип местности
+        const centerHex = this.createHex(0, 0, hexId++);
+        this.centerHex = centerHex;
+        this.hexes.push(centerHex);
+        
+        // [ЧТО] Создаём 6 гексов вокруг центра по кругу
+        // [ЗАЧЕМ] Формируем кольцо из соседних гексов
+        // [PLAN] Добавить больше колец для расширения карты
+        for (let angle = 0; angle < 6; angle++) {
+            // [ЧТО] Вычисляем угол в радианах для позиции гекса
+            // [ЗАЧЕМ] Равномерное распределение по кругу (60 градусов между гексами)
+            // [PLAN] Использовать кубические координаты для более сложных расчётов
+            const rad = (angle * 60) * (Math.PI / 180);
             
-            // Калининградский выступ
-            if (normQ < -0.85 && normR > -0.1 && normR < 0.2) {
-                return true;
-            }
+            // [ЧТО] Расстояние от центра до центра соседнего гекса
+            // [ЗАЧЕМ] Гексы должны касаться сторонами без зазоров
+            // [PLAN] Проверить формулу для разных ориентаций гексов
+            const distance = this.hexWidth; // Расстояние между центрами соседних гексов
             
-            // Крым
-            if (normQ > -0.75 && normQ < -0.55 && normR < -0.35 && normR > -0.65) {
-                return true;
-            }
+            // [ЧТО] Вычисляем axial-координаты для соседнего гекса
+            // [ЗАЧЕМ] Axial-координаты удобны для работы с гексагональными сетками
+            // [PLAN] Округлять координаты для избежания артефактов
+            const q = Math.round(Math.cos(rad));
+            const r = Math.round(Math.sin(rad) * 2 / Math.sqrt(3));
             
-            return Math.abs(normR) < maxR;
+            // [ЧТО] Создаём гекс с axial-координатами (q, r)
+            // [ЗАЧЕМ] Axial-координаты удобны для работы с гексагональными сетками
+            // [PLAN] Добавить конвертацию в pixel-координаты для отрисовки
+            const neighborHex = this.createHex(q, r, hexId++);
+            
+            // [ЧТО] Сохраняем ссылку на центральный гекс как соседа
+            // [ЗАЧЕМ] Двусторонняя связь для навигации между гексами
+            // [PLAN] Заполнить все связи между соседями
+            neighborHex.neighbors[this.getOppositeDirection(angle)] = centerHex;
+            centerHex.neighbors[angle] = neighborHex;
+            
+            this.hexes.push(neighborHex);
         }
         
-        // Центральная часть (Урал и Западная Сибирь)
-        if (normQ >= -0.5 && normQ < -0.2) {
-            const maxR = 0.6 + Math.sin((normQ + 0.5) * Math.PI * 1.5) * 0.15;
-            return Math.abs(normR) < maxR;
+        console.log(`[HexGrid] Создано ${this.hexes.length} гексов`);
+    }
+    
+    /**
+     * Создание объекта гекса
+     * @param {number} q - Axial-координата q
+     * @param {number} r - Axial-координата r
+     * @param {number} id - Уникальный идентификатор гекса
+     * @returns {Object} Объект гекса со всеми свойствами
+     */
+    createHex(q, r, id) {
+        // [ЧТО] Базовая структура гекса с координатами и состоянием
+        // [ЗАЧЕМ] Хранит всю информацию о гексе для игры и отрисовки
+        // [PLAN] Добавить больше свойств (тип местности, владелец и т.д.)
+        return {
+            id: id,
+            q: q, // Axial-координата q
+            r: r, // Axial-координата r
+            s: -q - r, // Третья координата для кубической системы (выводится из q и r)
+            neighbors: {}, // Соседи по направлениям 0-5
+            building: null, // Постройка на гексе (null если пусто)
+            terrain: 'plains', // Тип местности (пока всегда равнина)
+            
+            // [ЧТО] Pixel-координаты центра гекса (вычисляются при отрисовке)
+            // [ЗАЧЕМ] Нужны для отрисовки и обработки кликов
+            // [PLAN] Кэшировать вычисления для производительности
+            x: 0,
+            y: 0
+        };
+    }
+    
+    /**
+     * Получение противоположного направления
+     * @param {number} direction - Направление (0-5)
+     * @returns {number} Противоположное направление (0-5)
+     */
+    getOppositeDirection(direction) {
+        // [ЧТО] Противоположное направление = (direction + 3) % 6
+        // [ЗАЧЕМ] Нужно для установления двусторонних связей между гексами
+        // [PLAN] Вынести в утилиты
+        return (direction + 3) % 6;
+    }
+    
+    /**
+     * Получение гекса по ID
+     * @param {number} id - ID гекса
+     * @returns {Object|null} Объект гекса или null если не найден
+     */
+    getHexById(id) {
+        // [ЧТО] Поиск гекса в массиве по ID
+        // [ЗАЧЕМ] Быстрый доступ к конкретному гексу
+        // [PLAN] Использовать Map для O(1) доступа
+        return this.hexes.find(hex => hex.id === id) || null;
+    }
+    
+    /**
+     * Получение всех гексов
+     * @returns {Array} Массив всех гексов
+     */
+    getAllHexes() {
+        // [ЧТО] Возврат ссылки на массив гексов
+        // [ЗАЧЕМ] Для отрисовки и итерации по всем гексам
+        // [PLAN] Вернуть копию массива для безопасности
+        return this.hexes;
+    }
+    
+    /**
+     * Получение центрального гекса
+     * @returns {Object} Центральный гекс
+     */
+    getCenterHex() {
+        // [ЧТО] Возврат центрального гекса
+        // [ЗАЧЕМ] Точка отсчёта для различных операций
+        // [PLAN] Использовать для начальной позиции камеры
+        return this.centerHex;
+    }
+    
+    /**
+     * Проверка наличия постройки на гексе
+     * @param {number} hexId - ID гекса
+     * @returns {boolean} true если есть постройка
+     */
+    hasBuilding(hexId) {
+        // [ЧТО] Проверка свойства building у гекса
+        // [ЗАЧЕМ] Определение доступности гекса для строительства
+        // [PLAN] Добавить проверку типа постройки
+        const hex = this.getHexById(hexId);
+        return hex && hex.building !== null;
+    }
+    
+    /**
+     * Размещение постройки на гексе
+     * @param {number} hexId - ID гекса
+     * @param {Object} building - Объект постройки
+     * @returns {boolean} true если успешно размещено
+     */
+    placeBuilding(hexId, building) {
+        // [ЧТО] Установка постройки на гекс если он свободен
+        // [ЗАЧЕМ] Основная механика строительства
+        // [PLAN] Добавить проверку стоимости и требований
+        const hex = this.getHexById(hexId);
+        if (!hex || hex.building !== null) {
+            return false;
         }
         
-        // Сибирь - с Байкалом
-        if (normQ >= -0.2 && normQ < 0.3) {
-            const northLimit = 0.55 + Math.sin((normQ + 0.2) * Math.PI) * 0.18;
-            const southLimit = 0.4 + Math.cos((normQ + 0.2) * Math.PI) * 0.12;
-            
-            // Байкал
-            if (normQ > 0.0 && normQ < 0.15 && normR < -0.15 && normR > -0.35) {
-                return true;
-            }
-            
-            return normR < northLimit && normR > -southLimit;
-        }
-        
-        // Восточная Сибирь и Дальний Восток - с Сахалином
-        if (normQ >= 0.3 && normQ < 0.65) {
-            const northLimit = 0.5 - (normQ - 0.3) * 0.35;
-            const southLimit = 0.35 + (normQ - 0.3) * 0.6;
-            
-            // Сахалин
-            if (normQ > 0.5 && normQ < 0.65 && normR < -0.15 && normR > -0.4) {
-                return true;
-            }
-            
-            return normR < northLimit && normR > -southLimit;
-        }
-        
-        // Дальневосточный конец - с Камчаткой
-        if (normQ >= 0.65) {
-            const maxR = 0.3 - (normQ - 0.65) * 0.4;
-            
-            // Камчатка
-            if (normQ > 0.8 && normQ < 0.95 && normR > 0.05 && normR < 0.35) {
-                return true;
-            }
-            
-            if (maxR <= 0) return false;
-            return Math.abs(normR) < maxR;
-        }
-        
+        hex.building = building;
+        console.log(`[HexGrid] Постройка "${building.name}" размещена на гексе ${hexId}`);
         return true;
     }
-
+    
     /**
-     * [ЧТО] Проверка возможности размещения объекта на гексе.
-     * [ЗАЧЕМ] Предотвращает размещение на преградах или занятых гексах.
-     * [PLAN] 1.3. Логика размещения объектов
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @returns {boolean} true если размещение возможно
+     * Удаление постройки с гекса
+     * @param {number} hexId - ID гекса
+     * @returns {Object|null} Удалённая постройка или null
      */
-    canPlace(q, r) {
-        const key = this.getHexKey(q, r);
-        const hex = this.map.get(key);
-        if (!hex) return false;
-        if (hex.obstacle) return false;
-        if (hex.object) return false;
-        return true;
-    }
-
-    /**
-     * [ЧТО] Размещение объекта на указанном гексе.
-     * [ЗАЧЕМ] Добавляет строение или пользователя на карту.
-     * [PLAN] 1.3. Логика размещения объектов
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @param {Object} obj - Объект для размещения
-     * @returns {boolean} true если успешно размещён
-     */
-    placeObject(q, r, obj) {
-        const key = this.getHexKey(q, r);
-        const hex = this.map.get(key);
-        if (hex && this.canPlace(q, r)) {
-            hex.object = obj;
-            return true;
+    removeBuilding(hexId) {
+        // [ЧТО] Удаление постройки и возврат её данных
+        // [ЗАЧЕМ] Механика сноса зданий
+        // [PLAN] Добавить возврат части ресурсов при сносе
+        const hex = this.getHexById(hexId);
+        if (!hex || !hex.building) {
+            return null;
         }
-        return false;
+        
+        const building = hex.building;
+        hex.building = null;
+        console.log(`[HexGrid] Постройка "${building.name}" удалена с гекса ${hexId}`);
+        return building;
     }
-
+    
     /**
-     * [ЧТО] Удаление объекта с гекса.
-     * [ЗАЧЕМ] Освобождает гекс при сносе строения.
-     * [PLAN] 4.3. Управление инфраструктурой
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @returns {Object|null} Удалённый объект или null
+     * Получение размера гекса
+     * @returns {number} Размер гекса
      */
-    removeObject(q, r) {
-        const key = this.getHexKey(q, r);
-        const hex = this.map.get(key);
-        if (hex) {
-            const obj = hex.object;
-            hex.object = null;
-            return obj;
-        }
-        return null;
+    getHexSize() {
+        return this.hexSize;
     }
-
+    
     /**
-     * [ЧТО] Получение данных гекса по координатам.
-     * [ЗАЧЕМ] Возвращает полную информацию о гексе для отображения или логики.
-     * [PLAN] 1.1. Гексагональная основа
-     * @param {number} q - q координата
-     * @param {number} r - r координата
-     * @returns {Object|undefined} Данные гекса
+     * Получение ширины гекса
+     * @returns {number} Ширина гекса
      */
-    getHex(q, r) {
-        return this.map.get(this.getHexKey(q, r));
+    getHexWidth() {
+        return this.hexWidth;
+    }
+    
+    /**
+     * Получение высоты гекса
+     * @returns {number} Высота гекса
+     */
+    getHexHeight() {
+        return this.hexHeight;
     }
 }
 
-// Экспорт для использования в других модулях
+// [ЧТО] Экспорт класса для использования в других модулях
+// [ЗАЧЕМ] Модульная архитектура требует явного экспорта
+// [PLAN] Использовать ES6 modules в будущем
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = HexGrid;
 }
