@@ -2,7 +2,7 @@
 // Основная игровая логика
 
 class HexGrid {
-    constructor(hexSize = 30) {
+    constructor(hexSize = 15) {
         this.hexSize = hexSize;
         this.hexHeight = hexSize * Math.sqrt(3);
         this.hexWidth = hexSize * 2;
@@ -58,9 +58,9 @@ class HexGrid {
     // Инициализация карты с формой похожей на Россию
     // [ЧТО] Генерация гексагональной карты с очертаниями, напоминающими территорию России.
     // [ЗАЧЕМ] Визуальная схожесть с реальной картой России улучшает погружение и соответствует плану.
-    // [ERROR] Ошибка 2 - в плане отмечено что карта похожа на Россию, но карта не похожа
     // [PLAN] 1.4. Схожесть карты на реальную карту
-    initMap(width = 20, height = 15) {
+    // [USER] Измени принцип генерации карты, пусть гексы будут меньше и карта детальнее
+    initMap(width = 40, height = 30) {
         for (let q = -width; q <= width; q++) {
             for (let r = -height; r <= height; r++) {
                 if (Math.abs(q + r) <= Math.max(width, height)) {
@@ -554,7 +554,7 @@ class Game {
     constructor() {
         this.canvas = document.getElementById('game-canvas');
         this.ctx = this.canvas.getContext('2d');
-        this.grid = new HexGrid(6); // Уменьшенный размер гекса в 5 раз (было 30)
+        this.grid = new HexGrid(15); // Уменьшенный размер гекса для более детальной карты (было 30)
         
         // Ресурсы
         this.info = 100;
