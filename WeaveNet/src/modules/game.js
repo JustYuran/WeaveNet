@@ -21,7 +21,7 @@ class Game {
         // [PLAN] Поддержка нескольких canvas для UI
         this.canvas = document.getElementById('game-canvas');
         
-        // [ЧТО] Создаём гексагональную сетку из 7 гексов
+        // [ЧТО] Создаём гексагональную сетку из 19 гексов
         // [ЗАЧЕМ] Игровое поле для размещения построек
         // [PLAN] Настройка размера через параметры
         this.hexGrid = new HexGrid(60);
@@ -36,6 +36,11 @@ class Game {
         // [PLAN] Интеграция с постройками и другими системами
         this.userManager = new UserManager(this.hexGrid);
         
+        // [ЧТО] Создаём менеджер построек
+        // [ЗАЧЕМ] Централизованное управление типами зданий
+        // [PLAN] Расширить функционал построек
+        this.buildingsManager = new Buildings();
+        
         // [ЧТО] Передаём userManager в gridRenderer для отрисовки
         // [ЗАЧЕМ] Рендерер должен знать о пользователях
         // [PLAN] Рефакторинг: сделать userManager параметром конструктора
@@ -46,14 +51,10 @@ class Game {
         // [PLAN] Настроить количество через параметры
         this.userManager.populateInitialUsers(10);
         
-        // [ЧТО] Доступные типы построек
+        // [ЧТО] Доступные типы построек (получаем из Buildings модуля)
         // [ЗАЧЕМ] Игрок может выбирать что строить
         // [PLAN] Загрузка из конфига или JSON
-        this.buildingTypes = [
-            { id: 'tower', name: 'Вышка', cost: 50, color: '#4a9eff', description: 'Базовая вышка связи' },
-            { id: 'relay', name: 'Ретранслятор', cost: 30, color: '#4ade80', description: 'Усиливает сигнал' },
-            { id: 'generator', name: 'Генератор', cost: 100, color: '#fbbf24', description: 'Производит энергию' }
-        ];
+        this.buildingTypes = this.buildingsManager.getAllBuildingTypes();
         
         // [ЧТО] Текущие ресурсы игрока
         // [ЗАЧЕМ] Валюта для строительства
@@ -166,6 +167,14 @@ class Game {
      * [PLAN] Подсветка доступных гексов
      */
     selectBuildingType(type) {
+        // [ЧТО] Если уже выбрана эта постройка - отменяем выбор
+        // [ЗАЧЕМ] Toggle эффект для удобства
+        // [PLAN] Добавить анимацию
+        if (this.selectedBuildingType && this.selectedBuildingType.id === type.id) {
+            this.cancelBuilding();
+            return;
+        }
+        
         this.selectedBuildingType = type;
         this.gridRenderer.setBuildingTypeToPlace(type);
         console.log(`[Game] Выбрана постройка: ${type.name}`);
@@ -175,9 +184,13 @@ class Game {
         // [PLAN] Анимация выделения
         document.querySelectorAll('#building-panel button').forEach(btn => {
             btn.style.borderColor = 'transparent';
+            btn.style.boxShadow = 'none';
             if (btn.dataset.building === type.id) {
                 btn.style.borderColor = 'white';
-                btn.style.boxShadow = '0 0 10px white';
+                btn.style.boxShadow = '0 0 15px white';
+                btn.style.transform = 'scale(1.05)';
+            } else {
+                btn.style.transform = 'scale(1)';
             }
         });
     }
@@ -191,7 +204,7 @@ class Game {
     cancelBuilding() {
         this.selectedBuildingType = null;
         this.gridRenderer.setBuildingTypeToPlace(null);
-        this.gridRenderer.setSelectedHex(null);
+        // Не сбрасываем выделение гекса при отмене строительства
         console.log('[Game] Строительство отменено');
         
         // [ЧТО] Убираем выделение с кнопок
@@ -200,6 +213,7 @@ class Game {
         document.querySelectorAll('#building-panel button').forEach(btn => {
             btn.style.borderColor = 'transparent';
             btn.style.boxShadow = 'none';
+            btn.style.transform = 'scale(1)';
         });
     }
     
@@ -228,6 +242,14 @@ class Game {
                 this.cancelBuilding();
             }
         });
+        
+        // [ЧТО] Обработчик кнопки "Снести постройку"
+        // [ЗАЧЕМ] Удаление постройки с выбранного гекса
+        // [PLAN] Возврат части ресурсов при сносе
+        const demolishBtn = document.getElementById('btn-demolish');
+        if (demolishBtn) {
+            demolishBtn.addEventListener('click', () => this.demolishBuilding());
+        }
     }
     
     /**
@@ -339,6 +361,11 @@ class Game {
         // [PLAN] Оптимизировать проверку
         const hexId = this.gridRenderer.getHexAtPosition(mouseX, mouseY);
         
+        // [ЧТО] Устанавливаем hovered гекс в рендерере
+        // [ЗАЧЕМ] Для отрисовки hover эффекта
+        // [PLAN] Использовать для tooltip
+        this.gridRenderer.setHoveredHex(hexId);
+        
         // [ЧТО] Меняем курсор если над гексом
         // [ЗАЧЕМ] Визуальная подсказка о возможности взаимодействия
         // [PLAN] Разные курсоры для разных режимов
@@ -378,14 +405,10 @@ class Game {
         this.resources.info -= this.selectedBuildingType.cost;
         this.updateResourceUI();
         
-        // [ЧТО] Создаём объект постройки
-        // [ЗАЧЕМ] Данные для отображения и логики
+        // [ЧТО] Создаём объект постройки через Buildings модуль
+        // [ЗАЧЕМ] Централизованное создание построек
         // [PLAN] Добавить уровни и характеристики
-        const building = {
-            ...this.selectedBuildingType,
-            level: 1,
-            placedAt: Date.now()
-        };
+        const building = this.buildingsManager.createBuilding(this.selectedBuildingType.id);
         
         // [ЧТО] Размещаем постройку на гексе
         // [ЗАЧЕМ] Обновление состояния игры
@@ -393,6 +416,11 @@ class Game {
         this.hexGrid.placeBuilding(hex.id, building);
         
         console.log(`[Game] Постройка "${building.name}" размещена на гексе ${hex.id}`);
+        
+        // [ЧТО] Обновляем нижнюю панель с информацией
+        // [ЗАЧЕМ] Показать актуальную информацию о гексе
+        // [PLAN] Анимация обновления
+        this.updateBottomPanel(hex);
         
         // [ЧТО] Отменяем режим строительства после размещения
         // [ЗАЧЕМ] Игрок может передумать строить дальше
@@ -472,6 +500,49 @@ class Game {
             this.animationId = null;
         }
         console.log('[Game] Игра остановлена');
+    }
+    
+    /**
+     * Снос постройки на выбранном гексе
+     * [ЧТО] Удаляет постройку и возвращает часть ресурсов
+     * [ЗАЧЕМ] Механика удаления зданий
+     * [PLAN] Возврат 50% стоимости
+     */
+    demolishBuilding() {
+        const selectedHexId = this.gridRenderer.getSelectedHex();
+        if (selectedHexId === null) {
+            console.log('[Game] Гекс не выбран!');
+            return;
+        }
+        
+        const hex = this.hexGrid.getHexById(selectedHexId);
+        if (!hex || !hex.building) {
+            console.log('[Game] На гексе нет постройки!');
+            return;
+        }
+        
+        // [ЧТО] Получаем стоимость постройки
+        // [ЗАЧЕМ] Для возврата части ресурсов
+        // [PLAN] Настроить процент возврата
+        const refund = Math.floor(hex.building.cost * 0.5);
+        
+        // [ЧТО] Удаляем постройку
+        // [ЗАЧЕМ] Освобождаем гекс
+        // [PLAN] Анимация разрушения
+        this.hexGrid.removeBuilding(selectedHexId);
+        
+        // [ЧТО] Возвращаем часть ресурсов
+        // [ЗАЧЕМ] Компенсация за снос
+        // [PLAN] Разный процент для разных типов
+        this.resources.info += refund;
+        this.updateResourceUI();
+        
+        console.log(`[Game] Постройка "${hex.building.name}" снесена, возвращено ${refund} ресурсов`);
+        
+        // [ЧТО] Обновляем нижнюю панель
+        // [ЗАЧЕМ] Показать что постройка удалена
+        // [PLAN] Анимация обновления
+        this.updateBottomPanel(hex);
     }
 }
 

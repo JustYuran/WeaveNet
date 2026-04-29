@@ -27,6 +27,11 @@ class GridRenderer {
         // [PLAN] Добавить анимацию выделения
         this.selectedHexId = null;
         
+        // [ЧТО] Гекс под курсором мыши (для hover эффекта)
+        // [ЗАЧЕМ] Подсветка гекса при наведении
+        // [PLAN] Использовать для tooltip
+        this.hoveredHexId = null;
+        
         // [ЧТО] Тип постройки для режима строительства
         // [ЗАЧЕМ] Показывает какую постройку игрок хочет разместить
         // [PLAN] Добавить предпросмотр постройки перед размещением
@@ -115,7 +120,7 @@ class GridRenderer {
         // [ЧТО] Отрисовка курсора строительства если выбран тип постройки
         // [ЗАЧЕМ] Показывает где будет размещена постройка
         // [PLAN] Добавить проверку валидности позиции
-        if (this.buildingTypeToPlace && this.selectedHexId !== null) {
+        if (this.buildingTypeToPlace && this.hoveredHexId !== null) {
             this.drawBuildCursor();
         }
         
@@ -134,14 +139,25 @@ class GridRenderer {
     drawHex(hex) {
         const size = this.hexGrid.getHexSize();
         const isSelected = hex.id === this.selectedHexId;
+        const isHovered = hex.id === this.hoveredHexId;
+        
+        // [ЧТО] Определяем силу подсветки в зависимости от состояния
+        // [ЗАЧЕМ] Hover - 25% силы, Selected - 100% силы
+        // [PLAN] Добавить плавные переходы
+        let highlightIntensity = 0;
+        if (isSelected) {
+            highlightIntensity = 1.0;
+        } else if (isHovered) {
+            highlightIntensity = 0.25;
+        }
         
         // [ЧТО] Рисуем свечение для выделенного гекса
         // [ЗАЧЕМ] Визуальный эффект выделения
         // [PLAN] Добавить анимацию пульсации
-        if (isSelected) {
+        if (highlightIntensity > 0) {
             this.ctx.save();
             this.ctx.shadowColor = '#4a9eff';
-            this.ctx.shadowBlur = 20;
+            this.ctx.shadowBlur = 20 * highlightIntensity;
             this.ctx.beginPath();
             for (let i = 0; i < 6; i++) {
                 const angle = (i * 60) * (Math.PI / 180);
@@ -154,7 +170,7 @@ class GridRenderer {
                 }
             }
             this.ctx.closePath();
-            this.ctx.fillStyle = 'rgba(74, 158, 255, 0.4)';
+            this.ctx.fillStyle = `rgba(74, 158, 255, ${0.4 * highlightIntensity})`;
             this.ctx.fill();
             this.ctx.restore();
         }
@@ -186,6 +202,8 @@ class GridRenderer {
         // [PLAN] Добавить цвета для разных типов местности
         if (isSelected) {
             this.ctx.fillStyle = 'rgba(74, 158, 255, 0.3)'; // Синий для выделенного
+        } else if (isHovered) {
+            this.ctx.fillStyle = `rgba(74, 158, 255, ${0.3 * 0.25})`; // Слабый синий для hover
         } else {
             this.ctx.fillStyle = 'rgba(100, 100, 100, 0.2)'; // Серый для обычного
         }
@@ -197,6 +215,9 @@ class GridRenderer {
         if (isSelected) {
             this.ctx.strokeStyle = '#4a9eff';
             this.ctx.lineWidth = 3;
+        } else if (isHovered) {
+            this.ctx.strokeStyle = '#4a9eff';
+            this.ctx.lineWidth = 2;
         } else {
             this.ctx.strokeStyle = 'rgba(200, 200, 200, 0.5)';
             this.ctx.lineWidth = 1;
@@ -234,18 +255,19 @@ class GridRenderer {
     }
     
     /**
-     * Отрисовка курсора строительства
-     * [ЧТО] Показывает preview постройки на выбранном гексе
-     * [ЗАЧЕМ] Игрок видит куда разместится постройка
+     * Отрисовка курсора строительства (призрак постройки)
+     * [ЧТО] Показывает preview постройки на гексе под курсором
+     * [ЗАЧЕМ] Игрок видит куда разместится постройка и что будет строиться
      * [PLAN] Добавить красный цвет если размещение невозможно
      */
     drawBuildCursor() {
-        const hex = this.hexGrid.getHexById(this.selectedHexId);
+        const hex = this.hexGrid.getHexById(this.hoveredHexId);
         if (!hex || hex.building) return;
         
         const size = this.hexGrid.getHexSize() * 0.6;
+        const buildingType = this.buildingTypeToPlace;
         
-        // [ЧТО] Рисуем полупрозрачный прямоугольник
+        // [ЧТО] Рисуем полупрозрачный прямоугольник "призрака" постройки
         // [ЗАЧЕМ] Preview места размещения постройки
         // [PLAN] Анимировать пульсацию для привлечения внимания
         this.ctx.fillStyle = 'rgba(74, 158, 255, 0.5)';
@@ -269,6 +291,22 @@ class GridRenderer {
             size
         );
         this.ctx.setLineDash([]);
+        
+        // [ЧТО] Рисуем иконку/название постройки внутри призрака
+        // [ЗАЧЕМ] Игрок видит что именно будет построено
+        // [PLAN] Использовать иконки вместо текста
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = 'bold 12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        this.ctx.fillText(buildingType.name, hex.x, hex.y);
+        
+        // [ЧТО] Рисуем стоимость в углу
+        // [ЗАЧЕМ] Игрок видит стоимость строительства
+        // [PLAN] Показать достаточно ли ресурсов
+        this.ctx.font = '10px Arial';
+        this.ctx.fillStyle = '#fff';
+        this.ctx.fillText(`${buildingType.cost}`, hex.x, hex.y + size/2 + 12);
     }
     
     /**
@@ -280,11 +318,27 @@ class GridRenderer {
     }
     
     /**
+     * Установка гекса под курсором (hover)
+     * @param {number|null} hexId - ID гекса или null
+     */
+    setHoveredHex(hexId) {
+        this.hoveredHexId = hexId;
+    }
+    
+    /**
      * Получение выбранного гекса
      * @returns {number|null} ID выбранного гекса
      */
     getSelectedHex() {
         return this.selectedHexId;
+    }
+    
+    /**
+     * Получение гекса под курсором
+     * @returns {number|null} ID гекса под курсором
+     */
+    getHoveredHex() {
+        return this.hoveredHexId;
     }
     
     /**
@@ -410,6 +464,7 @@ class GridRenderer {
      */
     destroy() {
         this.selectedHexId = null;
+        this.hoveredHexId = null;
         this.buildingTypeToPlace = null;
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
