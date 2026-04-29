@@ -151,6 +151,11 @@ class GridRenderer {
             highlightIntensity = 0.25;
         }
         
+        // [ЧТО] Получаем цвет местности для гекса
+        // [ЗАЧЕМ] Визуальное различие биомов (равнина, пустыня, снег)
+        // [PLAN] Добавить текстуры для каждого биома
+        const terrainColor = this.getTerrainColor(hex.terrain);
+        
         // [ЧТО] Рисуем свечение для выделенного гекса
         // [ЗАЧЕМ] Визуальный эффект выделения
         // [PLAN] Добавить анимацию пульсации
@@ -197,15 +202,18 @@ class GridRenderer {
         
         this.ctx.closePath();
         
-        // [ЧТО] Заполняем гекс цветом в зависимости от состояния
-        // [ЗАЧЕМ] Визуальное различие между обычными и выделенными гексами
-        // [PLAN] Добавить цвета для разных типов местности
+        // [ЧТО] Заполняем гекс цветом местности с учётом выделения
+        // [ЗАЧЕМ] Визуальное различие между биомами и состояниями
+        // [PLAN] Добавить текстуры и узоры для каждого биома
         if (isSelected) {
-            this.ctx.fillStyle = 'rgba(74, 158, 255, 0.3)'; // Синий для выделенного
+            // Выделенный гекс - синий оттенок поверх цвета местности
+            this.ctx.fillStyle = this.blendColors(terrainColor, '#4a9eff', 0.5);
         } else if (isHovered) {
-            this.ctx.fillStyle = `rgba(74, 158, 255, ${0.3 * 0.25})`; // Слабый синий для hover
+            // Hover - слегка осветлённый цвет местности
+            this.ctx.fillStyle = this.lightenColor(terrainColor, 0.2);
         } else {
-            this.ctx.fillStyle = 'rgba(100, 100, 100, 0.2)'; // Серый для обычного
+            // Обычный гекс - базовый цвет местности
+            this.ctx.fillStyle = terrainColor;
         }
         this.ctx.fill();
         
@@ -223,6 +231,70 @@ class GridRenderer {
             this.ctx.lineWidth = 1;
         }
         this.ctx.stroke();
+    }
+    
+    /**
+     * Получение цвета для типа местности
+     * @param {string} terrain - Тип местности ('plains', 'desert', 'snow')
+     * @returns {string} HEX цвет
+     */
+    getTerrainColor(terrain) {
+        // [ЧТО] Возвращаем цвет для каждого биома
+        // [ЗАЧЕМ] Визуальное различие типов местности
+        // [PLAN] Добавить больше биомов и вариаций
+        const terrainColors = {
+            'plains': '#4a7c23',    // Зелёная равнина
+            'desert': '#d2b48c',    // Песочная пустыня
+            'snow': '#e8f4f8'       // Белоснежные пустоши
+        };
+        return terrainColors[terrain] || '#4a7c23'; // По умолчанию равнина
+    }
+    
+    /**
+     * Осветление HEX цвета
+     * @param {string} color - HEX цвет
+     * @param {number} amount - Степень осветления (0-1)
+     * @returns {string} Осветлённый HEX цвет
+     */
+    lightenColor(color, amount) {
+        // [ЧТО] Преобразуем HEX в RGB, осветляем и возвращаем в HEX
+        // [ЗАЧЕМ] Динамическая генерация оттенков для hover эффекта
+        // [PLAN] Кэшировать результаты для производительности
+        const r = parseInt(color.slice(1, 3), 16);
+        const g = parseInt(color.slice(3, 5), 16);
+        const b = parseInt(color.slice(5, 7), 16);
+        
+        const lightenedR = Math.min(255, Math.floor(r + (255 - r) * amount));
+        const lightenedG = Math.min(255, Math.floor(g + (255 - g) * amount));
+        const lightenedB = Math.min(255, Math.floor(b + (255 - b) * amount));
+        
+        return `rgb(${lightenedR}, ${lightenedG}, ${lightenedB})`;
+    }
+    
+    /**
+     * Смешивание двух HEX цветов
+     * @param {string} color1 - Первый HEX цвет
+     * @param {string} color2 - Второй HEX цвет
+     * @param {number} ratio - Пропорция смешивания (0-1, где 0=color1, 1=color2)
+     * @returns {string} Смешанный HEX цвет
+     */
+    blendColors(color1, color2, ratio) {
+        // [ЧТО] Преобразуем оба цвета в RGB, смешиваем и возвращаем в HEX
+        // [ЗАЧЕМ] Создание переходных цветов для выделения на фоне местности
+        // [PLAN] Оптимизировать для частых вызовов
+        const r1 = parseInt(color1.slice(1, 3), 16);
+        const g1 = parseInt(color1.slice(3, 5), 16);
+        const b1 = parseInt(color1.slice(5, 7), 16);
+        
+        const r2 = parseInt(color2.slice(1, 3), 16);
+        const g2 = parseInt(color2.slice(3, 5), 16);
+        const b2 = parseInt(color2.slice(5, 7), 16);
+        
+        const r = Math.floor(r1 + (r2 - r1) * ratio);
+        const g = Math.floor(g1 + (g2 - g1) * ratio);
+        const b = Math.floor(b1 + (b2 - b1) * ratio);
+        
+        return `rgb(${r}, ${g}, ${b})`;
     }
     
     /**
