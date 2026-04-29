@@ -7,6 +7,12 @@
  * [PLAN] Каждый гекс может содержать до 6 пользователей
  * [PLAN] Максимум пользователей = 1.5 * количество гексов
  * [PLAN] Каждую секунду пользователи могут случайно переместиться на соседний гекс или остаться
+ * 
+ * [МОДУЛЬ 2] Система статусов пользователей:
+ * - ⚪ Белый (White): нейтральный, не участвует в сети, не приносит доход
+ * - 🟡 Желтый (Yellow): зараженное устройство, высокий риск перехода в Красный
+ * - 🟢 Зеленый (Green): доброволец, низкий риск, приносит больше дохода
+ * - 🔴 Красный (Red): заблокированное устройство, связь обрывается, нет дохода
  */
 
 class UserManager {
@@ -88,7 +94,8 @@ class UserManager {
             hexId: randomHex.id,
             createdAt: Date.now(),
             color: this.generateRandomColor(),
-            moveCooldown: 0 // Задержка перед следующим перемещением
+            moveCooldown: 0, // Задержка перед следующим перемещением
+            status: 'white' // [МОДУЛЬ 2] Статус пользователя: 'white', 'yellow', 'green', 'red'
         };
         
         // [ЧТО] Добавляем пользователя в массив
@@ -325,17 +332,40 @@ class UserManager {
     populateInitialUsers(count) {
         console.log(`[UserManager] Создаём ${count} начальных пользователей...`);
         
+        // [ЧТО] Проверяем что гексы уже созданы
+        // [ЗАЧЕМ] Защита от вызова до инициализации сетки
+        const allHexes = this.hexGrid.getAllHexes();
+        if (!allHexes || allHexes.length === 0) {
+            console.error('[UserManager] Ошибка: гексы не инициализированы!');
+            return;
+        }
+        console.log(`[UserManager] Доступно гексов: ${allHexes.length}`);
+        
         let created = 0;
         for (let i = 0; i < count; i++) {
             const user = this.createUser();
             if (user) {
                 created++;
+                console.log(`[UserManager] Создан пользователь #${user.id} на гексе #${user.hexId}, статус: ${user.status}`);
             } else {
+                console.warn(`[UserManager] Не удалось создать пользователя #${i} (достигнут лимит или нет места)`);
                 break; // Достигнут лимит
             }
         }
         
         console.log(`[UserManager] Создано ${created} пользователей из ${count} запланированных`);
+        console.log(`[UserManager] Всего пользователей в массиве: ${this.users.length}`);
+        
+        // [ЧТО] Логируем распределение по гексам для отладки
+        // [ЗАЧЕМ] Помогает понять где разместились пользователи
+        const hexDistribution = {};
+        this.users.forEach(user => {
+            if (!hexDistribution[user.hexId]) {
+                hexDistribution[user.hexId] = 0;
+            }
+            hexDistribution[user.hexId]++;
+        });
+        console.log('[UserManager] Распределение по гексам:', hexDistribution);
     }
     
     /**
@@ -347,6 +377,148 @@ class UserManager {
      */
     getUsersOnHex(hexId) {
         return this.users.filter(user => user.hexId === hexId);
+    }
+
+    /**
+     * Получение статистики статусов пользователей на гексе
+     * [ЧТО] Подсчитывает количество пользователей каждого статуса на гексе
+     * [ЗАЧЕМ] 2.1.2 - Визуальное представление: цвет точки соответствует статусу большинства
+     * [PLAN] 2.2.2 - Расчёт дохода по типам пользователей
+     * @param {number} hexId - ID гекса
+     * @returns {Object} Статистика статусов {white, yellow, green, red, total, dominantStatus}
+     */
+    getStatusStatsOnHex(hexId) {
+        const usersOnHex = this.getUsersOnHex(hexId);
+        
+        // [ЧТО] Подсчитываем пользователей по статусам
+        // [ЗАЧЕМ] 2.1.2 - Определение доминирующего статуса для цвета точки
+        // [PLAN] 2.2.2 - Использование для расчёта дохода
+        const stats = {
+            white: 0,
+            yellow: 0,
+            green: 0,
+            red: 0,
+            total: usersOnHex.length
+        };
+        
+        usersOnHex.forEach(user => {
+            if (stats.hasOwnProperty(user.status)) {
+                stats[user.status]++;
+            }
+        });
+        
+        // [ЧТО] Определяем доминирующий статус с приоритетом: Green > Yellow > Red > White
+        // [ЗАЧЕМ] 2.1.2 - Цвет точки соответствует статусу большинства с приоритетами
+        // [PLAN] Использовать для отрисовки цветом
+        let dominantStatus = 'white';
+        let maxCount = 0;
+        
+        // Приоритетный порядок проверки: зеленый > желтый > красный > белый
+        const priorityOrder = ['green', 'yellow', 'red', 'white'];
+        for (const status of priorityOrder) {
+            if (stats[status] > maxCount) {
+                maxCount = stats[status];
+                dominantStatus = status;
+            }
+        }
+        
+        stats.dominantStatus = dominantStatus;
+        return stats;
+    }
+
+    /**
+     * Получение цвета для статуса пользователя
+     * [ЧТО] Возвращает цвет соответствующий статусу
+     * [ЗАЧЕМ] 2.1.2 - Визуальное представление статусов цветом
+     * [PLAN] 2.3 - Анимация пульсации для активных статусов
+     * @param {string} status - Статус пользователя ('white', 'yellow', 'green', 'red')
+     * @returns {string} HEX-код цвета
+     */
+    getStatusColor(status) {
+        const statusColors = {
+            'white': '#b0b0b0',  // ⚪ Серый для нейтральных
+            'yellow': '#ffd700', // 🟡 Золотой для зараженных
+            'green': '#00ff00',  // 🟢 Ярко-зеленый для добровольцев
+            'red': '#ff4444'     // 🔴 Красный для заблокированных
+        };
+        return statusColors[status] || statusColors.white;
+    }
+
+    /**
+     * Обновление статусов пользователей (циклы жизни)
+     * [ЧТО] Проверяет и обновляет статусы пользователей каждый такт
+     * [ЗАЧЕМ] 2.3 - Циклы смены статусов: заражение, поломка, восстановление
+     * [PLAN] 2.2.3 - Влияние климата на смену статусов
+     */
+    updateUserStatuses() {
+        const now = Date.now();
+        
+        // [ЧТО] Инициализируем таймер если это первый запуск
+        // [ЗАЧЕМ] Отслеживание интервала обновления статусов
+        if (!this.lastStatusUpdate) {
+            this.lastStatusUpdate = now;
+        }
+        
+        // [ЧТО] Обновляем статусы каждые 5 секунд (игровой час)
+        // [ЗАЧЕМ] 2.3 - Смена статусов происходит с определённой частотой
+        // [PLAN] Настроить интервал через параметры баланса
+        if (now - this.lastStatusUpdate < 5000) {
+            return;
+        }
+        this.lastStatusUpdate = now;
+        
+        this.users.forEach(user => {
+            // [ЧТО] Желтый → Красный с высоким шансом (5% за игровой час)
+            // [ЗАЧЕМ] 2.3.2 - Поломка: зараженные устройства часто блокируются
+            // [PLAN] 2.2.3 - Учет климатических факторов
+            if (user.status === 'yellow' && Math.random() < 0.05) {
+                user.status = 'red';
+                console.log(`[UserManager] Пользователь ${user.id}: Желтый → Красный (поломка)`);
+            }
+            
+            // [ЧТО] Зеленый → Красный с низким шансом (0.5% за игровой час)
+            // [ЗАЧЕМ] 2.3.2 - Поломка: добровольцы реже блокируются
+            // [PLAN] 2.2.3 - Учет климатических факторов
+            if (user.status === 'green' && Math.random() < 0.005) {
+                user.status = 'red';
+                console.log(`[UserManager] Пользователь ${user.id}: Зеленый → Красный (поломка)`);
+            }
+            
+            // [ЧТО] Красный → Белый/Зеленый (восстановление)
+            // [ЗАЧЕМ] 2.3.3 - Восстановление: автоматическая починка через время
+            // [PLAN] Добавить шанс полного сброса зеленого до белого (1-3%)
+            if (user.status === 'red' && Math.random() < 0.1) {
+                // 97-99% шанс остаться зеленым если был зеленым
+                // Для простоты пока все становятся белыми
+                user.status = 'white';
+                console.log(`[UserManager] Пользователь ${user.id}: Красный → Белый (восстановление)`);
+            }
+        });
+    }
+
+    /**
+     * Заражение пользователей на гексе (Белый → Желтый)
+     * [ЧТО] Меняет статус пользователей с Белого на Желтый
+     * [ЗАЧЕМ] 2.3.1 - Заражение при попадании в радиус покрытия постройки
+     * [PLAN] 4.2.1 - Автоматическое заражение при размещении постройки
+     * @param {number} hexId - ID гекса для заражения
+     * @returns {number} Количество зараженных пользователей
+     */
+    infectUsersOnHex(hexId) {
+        const usersOnHex = this.getUsersOnHex(hexId);
+        let infectedCount = 0;
+        
+        usersOnHex.forEach(user => {
+            // [ЧТО] Заражаем только Белых пользователей
+            // [ЗАЧЕМ] 2.3.1 - Белый автоматически становится Желтым в радиусе покрытия
+            if (user.status === 'white') {
+                user.status = 'yellow';
+                infectedCount++;
+                console.log(`[UserManager] Пользователь ${user.id}: Белый → Желтый (заражение)`);
+            }
+        });
+        
+        return infectedCount;
     }
 }
 
