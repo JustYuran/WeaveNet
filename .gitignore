@@ -13,6 +13,8 @@
 .vscode/
 .idea/
 
+# Original rules preserved
+*.log
 # Dependencies
 node_modules/
 venv/
