@@ -10,6 +10,8 @@ set GAME_DIR=%SCRIPT_DIR%WeaveNet
 set PORT=%1
 if "%PORT%"=="" set PORT=8080
 
+chcp 65001 >nul
+
 echo 🌐 WeaveNet - Локальный сервер
 echo ==============================
 echo 📂 Директория игры: %GAME_DIR%
