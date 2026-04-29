@@ -216,15 +216,15 @@ class HexGrid {
     }
     
     /**
-     * Определение типа местности для гекса
+     * Определение типа местности для гекса с плавными переходами
      * @param {number} q - Axial-координата q
      * @param {number} r - Axial-координата r
      * @returns {string} Тип местности ('plains', 'desert', 'snow')
      */
     getTerrainForHex(q, r) {
-        // [ЧТО] Распределяем биомы по координатам
-        // [ЗАЧЕМ] Создать реалистичную карту России с разными зонами
-        // [PLAN] Использовать шум Перлина для плавных переходов
+        // [ЧТО] Распределяем биомы с использованием шума для плавных переходов
+        // [ЗАЧЕМ] Избежать резких границ между биомами
+        // [PLAN] Использовать шум Перлина для ещё более плавных переходов
         
         const halfSize = Math.floor(this.mapSize / 2);
         const aspectRatio = 2.5;
@@ -234,21 +234,108 @@ class HexGrid {
         const normQ = q / halfSize;
         const normR = r / maxR;
         
-        // [ЧТО] Снежные пустоши - северные регионы (Сибирь, Дальний Восток)
-        // [ЗАЧЕМ] Реалистичное распределение климатических зон
-        if (normR < -0.3) {
-            return 'snow';
+        // [ЧТО] Добавляем псевдо-шум на основе координат для вариативности
+        // [ЗАЧЕМ] Создать естественные переходы между биомами
+        // [PLAN] Заменить на настоящий шум Перлина
+        const noise = Math.sin(q * 0.15) * Math.cos(r * 0.15) * 0.15 + 
+                      Math.sin(q * 0.05 + r * 0.08) * 0.2;
+        
+        // [ЧТО] Базовая зональность с шумом для плавных переходов
+        // Снежные пустоши - северные регионы (Сибирь, Дальний Восток)
+        const snowThreshold = -0.3 + noise;
+        // Пустыни - южные регионы (Калмыкия, Астраханская область)
+        const desertThreshold = 0.5 + noise * 0.8;
+        
+        // [ЧТО] Проверяем основную зону
+        let baseTerrain;
+        if (normR < snowThreshold) {
+            baseTerrain = 'snow';
+        } else if (normR > desertThreshold && Math.abs(normQ) < 0.4) {
+            baseTerrain = 'desert';
+        } else {
+            baseTerrain = 'plains';
         }
         
-        // [ЧТО] Пустыни - южные регионы (Калмыкия, Астраханская область)
-        // [ЗАЧЕМ] Разнообразие ландшафтов
-        if (normR > 0.5 && Math.abs(normQ) < 0.4) {
-            return 'desert';
+        // [ЧТО] Проверяем соседей чтобы избежать изолированных гексов
+        // [ЗАЧЕМ] Гарантировать что гекс не окружён ТОЛЬКО биомами другого типа
+        // [PLAN] Оптимизировать проверку соседей
+        const neighborTerrains = this.getNeighborTerrains(q, r, baseTerrain);
+        
+        // Если все соседи другого типа, корректируем текущий биом
+        if (neighborTerrains.allDifferent && neighborTerrains.count > 0) {
+            // Выбираем наиболее частый биом среди соседей
+            return neighborTerrains.dominantTerrain || baseTerrain;
         }
         
-        // [ЧТО] Равнины - основная территория (европейская часть России)
-        // [ЗАЧЕМ] Базовый биом для большинства построек
-        return 'plains';
+        return baseTerrain;
+    }
+    
+    /**
+     * Проверка соседних гексов на согласованность биомов
+     * @param {number} q - Axial-координата q текущего гекса
+     * @param {number} r - Axial-координата r текущего гекса
+     * @param {string} currentTerrain - Текущий биом гекса
+     * @returns {Object} Информация о соседях
+     */
+    getNeighborTerrains(q, r, currentTerrain) {
+        const dq = [1, 0, -1, -1, 0, 1];
+        const dr = [0, 1, 1, 0, -1, -1];
+        
+        const terrainCounts = { 'plains': 0, 'desert': 0, 'snow': 0 };
+        let validNeighbors = 0;
+        
+        // Считаем биомы соседей (без рекурсии, только прямые соседи)
+        for (let dir = 0; dir < 6; dir++) {
+            const nq = q + dq[dir];
+            const nr = r + dr[dir];
+            
+            // Быстрая проверка без создания гекса
+            const halfSize = Math.floor(this.mapSize / 2);
+            const aspectRatio = 2.5;
+            const maxR = Math.floor(halfSize / aspectRatio);
+            
+            const normNQ = nq / halfSize;
+            const normNR = nr / maxR;
+            
+            const noise = Math.sin(nq * 0.15) * Math.cos(nr * 0.15) * 0.15 + 
+                          Math.sin(nq * 0.05 + nr * 0.08) * 0.2;
+            
+            const snowThreshold = -0.3 + noise;
+            const desertThreshold = 0.5 + noise * 0.8;
+            
+            let neighborTerrain;
+            if (normNR < snowThreshold) {
+                neighborTerrain = 'snow';
+            } else if (normNR > desertThreshold && Math.abs(normNQ) < 0.4) {
+                neighborTerrain = 'desert';
+            } else {
+                neighborTerrain = 'plains';
+            }
+            
+            terrainCounts[neighborTerrain]++;
+            validNeighbors++;
+        }
+        
+        // Находим доминирующий биом среди соседей
+        let dominantTerrain = null;
+        let maxCount = 0;
+        for (const [terrain, count] of Object.entries(terrainCounts)) {
+            if (count > maxCount && terrain !== currentTerrain) {
+                maxCount = count;
+                dominantTerrain = terrain;
+            }
+        }
+        
+        // Проверяем, все ли соседи другого типа
+        const allDifferent = validNeighbors > 0 && 
+                            (terrainCounts[currentTerrain] === 0);
+        
+        return {
+            allDifferent: allDifferent,
+            count: validNeighbors,
+            dominantTerrain: dominantTerrain,
+            counts: terrainCounts
+        };
     }
     
     /**
