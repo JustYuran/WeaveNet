@@ -166,8 +166,6 @@ class HexGrid {
         }
     }
 
-    // Draw object icon on hex (without coverage zone)
-    drawObjectIcon(ctx, x, y, size, object) {
     // Рисование объекта на гексе
     drawObject(ctx, x, y, size, object) {
         // Определение символа и цвета в зависимости от типа объекта
