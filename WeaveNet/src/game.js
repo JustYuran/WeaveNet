@@ -90,6 +90,7 @@ class HexGrid {
     draw(ctx) {
         ctx.save();
         
+        // Сначала рисуем все гексы
         this.map.forEach((hex, key) => {
             const center = this.hexToScreen(hex.q, hex.r);
             
@@ -104,6 +105,22 @@ class HexGrid {
             // Рисуем объект на гексе
             if (hex.object) {
                 this.drawObject(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+            }
+        });
+        
+        // Затем рисуем зоны покрытия всех объектов
+        this.map.forEach((hex, key) => {
+            if (hex.object) {
+                const center = this.hexToScreen(hex.q, hex.r);
+                this.drawCoverage(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
+            }
+        });
+        
+        // Затем рисуем все объекты поверх зон покрытия
+        this.map.forEach((hex, key) => {
+            if (hex.object) {
+                const center = this.hexToScreen(hex.q, hex.r);
+                this.drawObjectIcon(ctx, center.x, center.y, this.hexSize * this.zoom, hex.object);
             }
         });
         
@@ -149,6 +166,8 @@ class HexGrid {
         }
     }
 
+    // Рисование иконки объекта на гексе (без зоны покрытия)
+    drawObjectIcon(ctx, x, y, size, object) {
     // Рисование объекта на гексе
     drawObject(ctx, x, y, size, object) {
         // Определение символа и цвета в зависимости от типа объекта
@@ -175,6 +194,44 @@ class HexGrid {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(symbol, x, y);
+    }
+
+    // Рисование зоны покрытия объекта
+    drawCoverage(ctx, x, y, size, object) {
+        // Рисуем зону покрытия только для активных режимов
+        if (object.mode !== 'active' && object.mode !== 'economy') {
+            return;
+        }
+        
+        // Определение цвета в зависимости от типа объекта
+        let color = '#4a9eff';
+        if (object.type === 'Вышка') {
+            color = '#f59e0b';
+        }
+        
+        // Определение цвета в зависимости от режима
+        let modeColor = color;
+        if (object.mode === 'economy') {
+            modeColor = '#fbbf24'; // желтый для экономного
+        }
+        
+        const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
+        const rangePixels = object.range * size * rangeMultiplier;
+        
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
+        gradient.addColorStop(0, `${modeColor}40`); // 25% прозрачности
+        gradient.addColorStop(1, `${modeColor}00`); // полностью прозрачный
+        
+        ctx.beginPath();
+        ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+    }
+
+    // Старый метод (оставлен для совместимости)
+    drawObject(ctx, x, y, size, object) {
+        this.drawObjectIcon(ctx, x, y, size, object);
+        this.drawCoverage(ctx, x, y, size, object);
         
         // Рисуем зону покрытия для активных режимов
         if (object.mode === 'active' || object.mode === 'economy') {
