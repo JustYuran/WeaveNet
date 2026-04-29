@@ -26,10 +26,15 @@ class Game {
         // [PLAN] Настройка размера через параметры
         this.hexGrid = new HexGrid(60, 200);
         
-        // [ЧТО] Создаём рендерер для отрисовки
-        // [ЗАЧЕМ] Визуализация гексов и построек
+        // [ЧТО] Создаём менеджер камеры для управления видом
+        // [ЗАЧЕМ] Панорамирование и зум карты
+        // [PLAN] Сохранение позиции камеры между сессиями
+        this.cameraManager = new CameraManager(this.canvas, this.hexGrid);
+        
+        // [ЧТО] Создаём рендерер для отрисовки с камерой
+        // [ЗАЧЕМ] Визуализация гексов и построек с учётом камеры
         // [PLAN] Добавить эффекты и анимации
-        this.gridRenderer = new GridRenderer(this.canvas, this.hexGrid);
+        this.gridRenderer = new GridRenderer(this.canvas, this.hexGrid, this.cameraManager);
         
         // [ЧТО] Создаём менеджер пользователей
         // [ЗАЧЕМ] Управление пользователями на карте (до 6 на гекс, макс 1.5*число полей)
@@ -45,6 +50,10 @@ class Game {
         // [ЗАЧЕМ] Рендерер должен знать о пользователях
         // [PLAN] Рефакторинг: сделать userManager параметром конструктора
         this.gridRenderer.userManager = this.userManager;
+        
+        // [ЧТО] Настраиваем обработчики событий камеры
+        // [ЗАЧЕМ] Управление камерой (ЛКМ - панорамирование, колесо - зум)
+        this.cameraManager.setupEventListeners();
         
         // [ЧТО] Создаём начальных пользователей (заполняем карту)
         // [ЗАЧЕМ] Стартовое состояние игры с активностью
@@ -218,6 +227,56 @@ class Game {
     }
     
     /**
+     * Переключение режима камеры
+     * [ЧТО] Переключает камеру между 'pan' и 'interact'
+     * [ЗАЧЕМ] Разные режимы взаимодействия с картой
+     * [PLAN] Обновлять UI при переключении
+     */
+    toggleCameraMode() {
+        const newMode = this.cameraManager.toggleMode();
+        console.log(`[Game] Режим камеры: ${newMode}`);
+        this.updateBottomPanelInfo();
+    }
+    
+    /**
+     * Обновление информации в нижней панели
+     * [ЧТО] Обновляет отображение режима камеры и другой информации
+     * [ЗАЧЕМ] Игрок видит текущее состояние
+     */
+    updateBottomPanelInfo() {
+        // [ЧТО] Получаем элемент для режима камеры
+        // [ЗАЧЕМ] Показать текущий режим
+        let cameraModeEl = document.getElementById('camera-mode-info');
+        if (!cameraModeEl) {
+            // Создаём если нет
+            const bottomPanel = document.getElementById('bottom-panel');
+            const modeContainer = document.createElement('div');
+            modeContainer.id = 'camera-mode-info';
+            modeContainer.style.cssText = `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 5px 10px;
+                background: rgba(74, 158, 255, 0.2);
+                border-radius: 4px;
+                font-size: 12px;
+            `;
+            modeContainer.innerHTML = '<span style="color: #aaa;">Режим:</span><span id="camera-mode-value" style="color: #4a9eff; font-weight: bold;">Панорамирование</span>';
+            bottomPanel.appendChild(modeContainer);
+            cameraModeEl = modeContainer;
+        }
+        
+        // [ЧТО] Обновляем текст режима
+        // [ЗАЧЕМ] Отображение текущего режима
+        const modeValue = document.getElementById('camera-mode-value');
+        if (modeValue && this.cameraManager) {
+            const mode = this.cameraManager.getMode();
+            modeValue.textContent = mode === 'pan' ? 'Панорамирование' : 'Взаимодействие';
+            modeValue.style.color = mode === 'pan' ? '#4a9eff' : '#fbbf24';
+        }
+    }
+    
+    /**
      * Настройка обработчиков событий
      * [ЧТО] Регистрирует обработчики кликов и движения мыши
      * [ЗАЧЕМ] Взаимодействие игрока с игровым полем
@@ -240,6 +299,11 @@ class Game {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.cancelBuilding();
+            }
+            // [ЧТО] Обработка клавиши C для переключения режима камеры
+            // [ЗАЧЕМ] Быстрое переключение между панорамированием и взаимодействием
+            if (e.key === 'c' || e.key === 'C' || e.key === 'с' || e.key === 'С') {
+                this.toggleCameraMode();
             }
         });
         
@@ -334,6 +398,10 @@ class Game {
         // [ЗАЧЕМ] Показать связи
         const neighborCount = Object.keys(hex.neighbors).filter(k => hex.neighbors[k] !== null).length;
         document.getElementById('hex-neighbors').textContent = neighborCount;
+        
+        // [ЧТО] Обновляем информацию о режиме камеры
+        // [ЗАЧЕМ] Игрок видит текущий режим
+        this.updateBottomPanelInfo();
     }
     
     /**
