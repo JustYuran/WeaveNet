@@ -3,6 +3,7 @@ REM WeaveNet Local Server Launcher for Windows
 REM Запускает простой HTTP сервер для игры WeaveNet
 
 setlocal enabledelayedexpansion
+chcp 65001 >nul
 
 REM Получаем директорию скрипта
 set SCRIPT_DIR=%~dp0
@@ -10,34 +11,32 @@ set GAME_DIR=%SCRIPT_DIR%WeaveNet
 set PORT=%1
 if "%PORT%"=="" set PORT=8080
 
-chcp 65001 >nul
-
-echo 🌐 WeaveNet - Локальный сервер
+echo [INFO] WeaveNet - Local Server
 echo ==============================
-echo 📂 Директория игры: %GAME_DIR%
-echo 🔌 Порт: %PORT%
+echo [INFO] Game Directory: %GAME_DIR%
+echo [INFO] Port: %PORT%
 echo.
 
 if not exist "%GAME_DIR%" (
-    echo ❌ Ошибка: Директория игры не найдена: %GAME_DIR%
+    echo [ERROR] Game directory not found: %GAME_DIR%
     pause
     exit /b 1
 )
 
 if not exist "%GAME_DIR%\index.html" (
-    echo ❌ Ошибка: Файл index.html не найден в %GAME_DIR%
+    echo [ERROR] index.html not found in %GAME_DIR%
     pause
     exit /b 1
 )
 
-echo ✅ Запуск сервера...
-echo 🚀 Откройте в браузере: http://localhost:%PORT%
-echo 💡 Для остановки нажмите Ctrl+C
+echo [OK] Starting server...
+echo [INFO] Open in browser: http://localhost:%PORT%
+echo [INFO] Press Ctrl+C to stop
 echo.
 
 cd /d "%GAME_DIR%"
 
-REM Проверка наличия Python
+REM Check for Python
 python --version >nul 2>&1
 if %errorlevel% equ 0 (
     python -m http.server %PORT%
@@ -46,8 +45,8 @@ if %errorlevel% equ 0 (
     if %errorlevel% equ 0 (
         python3 -m http.server %PORT%
     ) else (
-        echo ❌ Ошибка: Python не найден. Установите Python для запуска локального сервера.
-        echo Скачать можно с: https://www.python.org/downloads/
+        echo [ERROR] Python not found. Please install Python to run the local server.
+        echo Download from: https://www.python.org/downloads/
         pause
         exit /b 1
     )
