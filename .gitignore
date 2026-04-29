@@ -15,8 +15,8 @@
 
 # Dependencies
 node_modules/
-venv/
 .venv/
+venv/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
@@ -25,22 +25,27 @@ build/
 target/
 .gradle/
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
+
+# Compiled files
+*.pyc
+*.class
+*.o
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+*.out
 
 # Coverage
 coverage/
 htmlcov/
 .coverage
 
-# Backup files
-*.bak
-*.backup
-*.swp
-*.swo
-
-# Compression
+# Compressed files
 *.zip
 *.gz
 *.tar
