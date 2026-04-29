@@ -58,7 +58,10 @@ class Game {
         // [ЧТО] Создаём начальных пользователей (заполняем карту)
         // [ЗАЧЕМ] Стартовое состояние игры с активностью
         // [PLAN] Настроить количество через параметры
-        this.userManager.populateInitialUsers(10);
+        // Формула: 0.7 * число гексов = базовое заполнение карты
+        const initialUserCount = this.userManager.minInitialUsers;
+        console.log(`[Game] Начальное количество пользователей: ${initialUserCount} (0.7 * ${this.hexGrid.getAllHexes().length} гексов)`);
+        this.userManager.populateInitialUsers(initialUserCount);
         
         // [ЧТО] Доступные типы построек (получаем из Buildings модуля)
         // [ЗАЧЕМ] Игрок может выбирать что строить
