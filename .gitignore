@@ -7,7 +7,7 @@
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
@@ -25,9 +25,20 @@ build/
 target/
 .gradle/
 
-# OS
+# System files
 .DS_Store
 Thumbs.db
+
+# Compiled files
+*.pyc
+*.class
+*.o
+*.exe
+*.dll
+*.so
+*.a
+*.obj
+*.out
 
 # Coverage
 coverage/
