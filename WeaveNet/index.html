@@ -176,6 +176,59 @@
             transition: all 0.2s;
         }
         .btn-close:hover { background: rgba(255, 255, 255, 0.4); }
+        
+        /* [ЧТО] Стили для всплывающих подсказок (tooltips). */
+        /* [ЗАЧЕМ] Позволяют игроку быстро понять назначение элементов интерфейса без чтения документации. */
+        /* [TODO] Добавить подсказки (tooltips) при наведении на элементы интерфейса. */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.95);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            border: 1px solid #444;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+            bottom: calc(100% + 8px);
+        }
+        
+        /* Стрелочка для tooltip */
+        .tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.95);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+        
+        .tooltip:hover::before {
+            opacity: 1;
+            visibility: visible;
+            bottom: calc(100% - 1px);
+        }
     </style>
 </head>
 <body>
@@ -183,25 +236,25 @@
         <!-- Верхняя панель -->
         <div id="top-bar">
             <div class="resource-group">
-                <div class="resource">
+                <div class="resource tooltip" data-tooltip="Основная валюта для строительства">
                     <span class="resource-value" id="info-value">100</span>
                     <span class="resource-label">Информация</span>
                     <span class="resource-label" id="info-rate">+0/с</span>
                 </div>
-                <div class="resource">
+                <div class="resource tooltip" data-tooltip="Ресурс для обслуживания строений">
                     <span class="resource-value" id="energy-value">50</span>
                     <span class="resource-label">Энергия</span>
                     <span class="resource-label" id="energy-rate">+0/с</span>
                 </div>
             </div>
             
-            <div id="timer">00:00</div>
+            <div id="timer" class="tooltip" data-tooltip="Время игры в свободном режиме">00:00</div>
             
             <div class="controls-group">
-                <button class="speed-btn" data-speed="0">⏸</button>
-                <button class="speed-btn active" data-speed="1">1x</button>
-                <button class="speed-btn" data-speed="2">2x</button>
-                <button class="speed-btn" data-speed="5">5x</button>
+                <button class="speed-btn tooltip" data-speed="0" data-tooltip="Пауза">⏸</button>
+                <button class="speed-btn active tooltip" data-speed="1" data-tooltip="Обычная скорость (1x)">1x</button>
+                <button class="speed-btn tooltip" data-speed="2" data-tooltip="Ускоренная скорость (2x)">2x</button>
+                <button class="speed-btn tooltip" data-speed="5" data-tooltip="Быстрая скорость (5x)">5x</button>
             </div>
         </div>
         
@@ -212,7 +265,7 @@
         
         <!-- Контекстная панель -->
         <div id="context-panel">
-            <button class="btn-close" onclick="closeContextPanel()">×</button>
+            <button class="btn-close tooltip" onclick="closeContextPanel()" data-tooltip="Закрыть панель">×</button>
             <div class="panel-title" id="panel-title">Объект</div>
             <div id="panel-content"></div>
             <div class="panel-buttons" id="panel-buttons"></div>
