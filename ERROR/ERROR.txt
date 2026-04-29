@@ -1,0 +1,655 @@
+Ошибка - статус: не исправлено
+inject.js:84 WARNING:StorageManager: settings timeout, using defaults
+game.js:123 Uncaught TypeError: this.drawObjectIcon is not a function
+    at game.js:123:22
+    at Map.forEach (<anonymous>)
+    at HexGrid.draw (game.js:120:18)
+    at Game.render (game.js:572:19)
+    at Game.loop (game.js:599:14)
+    at game.js:601:42
+(анонимная) @ game.js:123
+draw @ game.js:120
+render @ game.js:572
+loop @ game.js:599
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+(анонимная) @ game.js:601
+requestAnimationFrame
+loop @ game.js:601
+init @ game.js:317
+Game @ game.js:297
+(анонимная) @ game.js:614
