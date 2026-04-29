@@ -219,14 +219,21 @@ class HexGrid {
         const rangeMultiplier = object.mode === 'economy' ? 0.5 : 1.0;
         const rangePixels = object.range * size * rangeMultiplier;
         
+        // Увеличиваем видимость зоны покрытия
         const gradient = ctx.createRadialGradient(x, y, 0, x, y, rangePixels);
-        gradient.addColorStop(0, `${modeColor}40`); // 25% прозрачности
-        gradient.addColorStop(1, `${modeColor}00`); // полностью прозрачный
+        gradient.addColorStop(0, `${modeColor}80`); // 50% прозрачности (было 25%)
+        gradient.addColorStop(0.5, `${modeColor}40`); // 25% прозрачности на середине
+        gradient.addColorStop(1, `${modeColor}20`); // 12% прозрачности по краям (было 0%)
         
         ctx.beginPath();
         ctx.arc(x, y, rangePixels, 0, Math.PI * 2);
         ctx.fillStyle = gradient;
         ctx.fill();
+        
+        // Добавляем обводку для лучшей видимости
+        ctx.strokeStyle = `${modeColor}60`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
     }
 
     // Проверка возможности размещения
@@ -272,7 +279,7 @@ class Game {
     constructor() {
         this.canvas = document.getElementById('game-canvas');
         this.ctx = this.canvas.getContext('2d');
-        this.grid = new HexGrid(30);
+        this.grid = new HexGrid(6); // Уменьшенный размер гекса в 5 раз (было 30)
         
         // Ресурсы
         this.info = 100;
@@ -305,8 +312,8 @@ class Game {
         this.grid.offsetX = this.canvas.width / 2;
         this.grid.offsetY = this.canvas.height / 2;
         
-        // Инициализация карты
-        this.grid.initMap(15, 12);
+        // Инициализация карты (увеличено в 10 раз больше гексов)
+        this.grid.initMap(47, 38); // Было (15, 12), увеличили примерно в sqrt(10) раз для каждой оси
         
         // Обработчики событий
         this.setupEventListeners();
@@ -514,9 +521,9 @@ class Game {
         document.getElementById('energy-rate').className = `resource-label ${this.energyRate >= 0 ? 'info-positive' : 'info-negative'}`;
     }
 
-    updateTimer() {
+    updateTimer(deltaTime) {
         if (!this.paused) {
-            this.gameTime += (Date.now() - this.lastUpdate) / 1000 * this.speed;
+            this.gameTime += deltaTime * this.speed;
         }
         
         const minutes = Math.floor(this.gameTime / 60);
@@ -594,8 +601,8 @@ class Game {
         const deltaTime = (now - this.lastUpdate) / 1000;
         this.lastUpdate = now;
         
-        this.updateTimer();
         this.updateEconomy(deltaTime);
+        this.updateTimer(deltaTime);
         this.render();
         
         requestAnimationFrame(() => this.loop());
