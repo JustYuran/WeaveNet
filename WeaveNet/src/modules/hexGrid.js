@@ -421,6 +421,75 @@ class HexGrid {
         // [PLAN] 1.3.3 - Можно создавать мосты связи над водой
         
         return true;
+    /**
+     * Проверка линии видимости между двумя гексами (line-of-sight)
+     * @param {Object} startHex - Начальный гекс
+     * @param {Object} endHex - Конечный гекс
+     * @returns {boolean} true если сигнал может пройти напрямую
+     * 
+     * [ЧТО] Проверяет есть ли прямая видимость между гексами без преград
+     * [ЗАЧЕМ] 5.1.1 - Реализация проверки пути сигнала для соединений
+     * [PLAN] Использовать в networkManager.js при построении графа связей
+     */
+    hasLineOfSight(startHex, endHex) {
+        if (!startHex || !endHex) return false;
+        
+        // [ЧТО] Если гексы соседние - проверка не нужна
+        // [ЗАЧЕМ] Оптимизация для частых случаев
+        // [PLAN] Можно добавить кэширование результатов
+        const distance = this.getDistance(startHex, endHex);
+        if (distance <= 1) {
+            return this.isSignalPassable(startHex) && this.isSignalPassable(endHex);
+        }
+        
+        // [ЧТО] Используем алгоритм линейной интерполяции для проверки пути
+        // [ЗАЧЕМ] 5.1.1 - Проверяем все гексы на прямой между началом и концом
+        // [PLAN] Можно заменить на более точный алгоритм (Bresenham для гексов)
+        
+        const steps = distance;
+        for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            
+            // [ЧТО] Интерполируем координаты между начальной и конечной точкой
+            // [ЗАЧЕМ] Находим промежуточные гексы на пути сигнала
+            // [PLAN] Улучшить точность для больших расстояний
+            const q = Math.round(startHex.q + (endHex.q - startHex.q) * t);
+            const r = Math.round(startHex.r + (endHex.r - startHex.r) * t);
+            
+            const hex = this.getHexByCoords(q, r);
+            
+            // [ЧТО] Если гекс не существует или непроходим - сигнал блокируется
+            // [ЗАЧЕМ] 5.1.1 - Горы и пропасти прерывают линию видимости
+            // [PLAN] Добавить визуализацию заблокированных путей
+            if (!hex || !this.isSignalPassable(hex)) {
+                return false;
+            }
+        }
+        
+        // [ЧТО] Все гексы на пути проходимы
+        // [ЗАЧЕМ] Сигнал может пройти напрямую
+        // [PLAN] 5.1.2 - Визуально отображать зеленые линии для таких соединений
+        return true;
+    }
+    
+    /**
+     * Получение расстояния между двумя гексами в гексах
+     * @param {Object} hexA - Первый гекс
+     * @param {Object} hexB - Второй гекс
+     * @returns {number} Расстояние в гексах
+     */
+    getDistance(hexA, hexB) {
+        if (!hexA || !hexB) return Infinity;
+        
+        // [ЧТО] Используем формулу расстояния в axial-координатах
+        // [ЗАЧЕМ] Точное измерение расстояния по гексагональной сетке
+        // [PLAN] Использовать в pathfinding и проверке радиуса покрытия
+        const dq = hexB.q - hexA.q;
+        const dr = hexB.r - hexA.r;
+        
+        // Формула: max(|dq|, |dr|, |dq+dr|)
+        return Math.max(Math.abs(dq), Math.abs(dr), Math.abs(dq + dr));
+    }
     }
     
     /**
