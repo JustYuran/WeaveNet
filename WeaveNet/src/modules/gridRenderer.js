@@ -737,6 +737,10 @@ class GridRenderer {
     drawNetworkLines() {
         if (!this.networkManager) return;
         
+        // [ЧТО] Получаем текущее время для анимации пульсации
+        // [ЗАЧЕМ] 4.3.2 - Динамика и состояние линий (пульсация)
+        const time = Date.now() * 0.002; // Медленная пульсация
+        
         // [ЧТО] Получаем все рёбра сети (соединения между постройками)
         // [ЗАЧЕМ] 4.3.1 - Отрисовка соединительных линий
         const edges = this.networkManager.getNetworkEdges();
@@ -749,10 +753,34 @@ class GridRenderer {
             
             if (!hex1 || !hex2) return;
             
-            // [ЧТО] Определяем цвет линии на основе статуса соединения
-            // [ЗАЧЕМ] 4.3.1 - Цвет линии соответствует статусу
-            const lineColor = edge.isActive ? '#00ff00' : '#ff4444';
-            const lineWidth = 2;
+            // [ЧТО] Получаем постройки для определения статуса
+            // [ЗАЧЕМ] 4.3.1 - Цвет линии соответствует статусу источника
+            const building1 = this.buildingSystem?.getBuildingOnHex(edge.from);
+            const building2 = this.buildingSystem?.getBuildingOnHex(edge.to);
+            
+            // [ЧТО] Определяем цвет линии на основе режима работы постройки
+            // [ЗАЧЕМ] 4.3.1 - Зеленый (стабильный), Желтый (экономный), Красный (обрыв)
+            let lineColor = '#00ff00'; // По умолчанию зеленый
+            let pulseIntensity = 1.0;
+            
+            if (building1 && building1.mode === 'yellow') {
+                lineColor = '#ffd700'; // Желтый для экономного режима
+                pulseIntensity = 0.7;
+            } else if (building2 && building2.mode === 'yellow') {
+                lineColor = '#ffd700';
+                pulseIntensity = 0.7;
+            }
+            
+            if (!edge.isActive) {
+                lineColor = '#ff4444'; // Красный для обрыва связи
+                pulseIntensity = 0.3;
+            }
+            
+            // [ЧТО] Рассчитываем пульсацию для эффекта передачи данных
+            // [ЗАЧЕМ] 4.3.2 - Линии пульсируют в такт игровому циклу
+            const pulse = Math.sin(time + edge.from.length) * 0.3 + 0.7; // 0.4-1.0
+            const lineWidth = 2 * pulse * pulseIntensity;
+            const alpha = 0.6 * pulse * pulseIntensity + 0.4; // 0.4-1.0
             
             // [ЧТО] Рисуем линию от центра к центру
             // [ЗАЧЕМ] 4.3.1 - Линии проводятся строго от центра гекса к центру
@@ -760,24 +788,124 @@ class GridRenderer {
             this.ctx.moveTo(hex1.x, hex1.y);
             this.ctx.lineTo(hex2.x, hex2.y);
             
-            // [ЧТО] Настраиваем стиль линии
-            // [ЗАЧЕМ] Светящиеся линии для красоты
-            this.ctx.strokeStyle = lineColor;
+            // [ЧТО] Настраиваем стиль линии с учетом пульсации
+            // [ЗАЧЕМ] Светящиеся линии для красоты + анимация передачи данных
+            this.ctx.strokeStyle = this.hexToRgba(lineColor, alpha);
             this.ctx.lineWidth = lineWidth;
             this.ctx.shadowColor = lineColor;
-            this.ctx.shadowBlur = 10;
+            this.ctx.shadowBlur = 15 * pulse;
             this.ctx.stroke();
+            
+            // [ЧТО] Рисуем пульсирующую точку посередине линии (эффект пакета данных)
+            // [ЗАЧЕМ] 4.3.2 - Демонстрация передачи данных
+            if (edge.isActive) {
+                const midX = (hex1.x + hex2.x) / 2;
+                const midY = (hex1.y + hex2.y) / 2;
+                const packetOffset = Math.sin(time * 2 + edge.from.length) * 0.3;
+                
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    midX, 
+                    midY, 
+                    3 * (1 + packetOffset), 
+                    0, 
+                    Math.PI * 2
+                );
+                this.ctx.fillStyle = this.hexToRgba('#ffffff', 0.8 * pulse);
+                this.ctx.fill();
+            }
             
             // [ЧТО] Сбрасываем тень после отрисовки
             // [ЗАЧЕМ] Не влиять на последующую отрисовку
             this.ctx.shadowBlur = 0;
         });
         
+        // [ЧТО] Отрисовка линий от построек к подключенным пользователям
+        // [ЗАЧЕМ] 4.3.1 - Визуализация подключения пользователей к сети
+        this.drawUserConnectionLines();
+        
         // [ЧТО] Логгируем количество отрисованных линий
         // [ЗАЧЕМ] Отладка и статистика
         if (edges.length > 0) {
-            console.log(`[GridRenderer.drawNetworkLines] Отрисовано ${edges.length} соединений`);
+            console.log(`[GridRenderer.drawNetworkLines] Отрисовано ${edges.length} соединений между постройками`);
         }
+    }
+    
+    /**
+     * Отрисовка линий подключения пользователей
+     * [ЧТО] Рисует тонкие линии от пользователей к ближайшим постройкам
+     * [ЗАЧЕМ] 4.3.1 - Показать какие пользователи подключены к сети
+     * [PLAN] 4.3.3 - Оптимизация: скрывать при сильном зуме
+     */
+    drawUserConnectionLines() {
+        if (!this.userManager || !this.networkManager) return;
+        
+        // [ЧТО] Получаем все подключения пользователей
+        // [ЗАЧЕМ] 4.2 - Механика подключения пользователей
+        const userConnections = this.networkManager.getUserConnections();
+        
+        // [ЧТО] Определяем текущий уровень зума камеры
+        // [ЗАЧЕМ] 4.3.3 - Оптимизация отображения (скрывать мелкие линии при отдалении)
+        const zoomLevel = this.cameraManager?.getZoom?.() || 1;
+        const hideUserLines = zoomLevel < 0.5; // Скрывать при зуме меньше 50%
+        
+        if (hideUserLines || userConnections.size === 0) return;
+        
+        // [ЧТО] Проходим по всем подключениям и рисуем линии
+        // [ЗАЧЕМ] Визуализация связей пользователь-постройка
+        userConnections.forEach((buildingId, userId) => {
+            const user = this.userManager.getUserById(userId);
+            if (!user) return;
+            
+            const userHex = this.hexGrid.getHexById(user.hexId);
+            const buildingHex = this.hexGrid.getAllHexes().find(h => 
+                h.building && h.building.id === buildingId
+            );
+            
+            if (!userHex || !buildingHex) return;
+            
+            // [ЧТО] Определяем цвет линии по статусу пользователя
+            // [ЗАЧЕМ] 4.3.1 - Цвет соответствует статусу
+            let lineColor = '#b0b0b0'; // Белый по умолчанию
+            let lineWidth = 1;
+            
+            switch (user.status) {
+                case 'green':
+                    lineColor = '#00ff00';
+                    lineWidth = 1.5;
+                    break;
+                case 'yellow':
+                    lineColor = '#ffd700';
+                    lineWidth = 1;
+                    break;
+                case 'red':
+                    lineColor = '#ff4444';
+                    lineWidth = 0.5;
+                    break;
+            }
+            
+            // [ЧТО] Рисуем тонкую линию от пользователя к постройке
+            // [ЗАЧЕМ] Показать подключение к сети
+            this.ctx.beginPath();
+            this.ctx.moveTo(userHex.x, userHex.y);
+            this.ctx.lineTo(buildingHex.x, buildingHex.y);
+            
+            this.ctx.strokeStyle = this.hexToRgba(lineColor, 0.4); // Полупрозрачные
+            this.ctx.lineWidth = lineWidth;
+            this.ctx.stroke();
+        });
+    }
+    
+    /**
+     * Преобразование HEX цвета в RGBA строку
+     * [ЧТО] Конвертирует #RRGGBB в rgba(r,g,b,alpha)
+     * [ЗАЧЕМ] Для управления прозрачностью линий
+     */
+    hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
     
     /**
