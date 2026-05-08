@@ -146,6 +146,13 @@ class GridRenderer {
             this.drawUsers();
         }
         
+        // [ЧТО] Отрисовка сетевых линий связи (после пользователей, до сброса камеры)
+        // [ЗАЧЕМ] 4.3 - Визуализация соединений между постройками и пользователями
+        // [PLAN] 4.3.2 - Добавить пульсацию и стилизацию линий
+        if (this.networkManager) {
+            this.drawNetworkLines();
+        }
+        
         // [ЧТО] Сбрасываем трансформацию камеры для UI элементов
         // [ЗАЧЕМ] Курсор и другие UI элементы рисуются без трансформации
         if (this.cameraManager) {
@@ -719,6 +726,58 @@ class GridRenderer {
                 this.ctx.stroke();
             });
         });
+    }
+    
+    /**
+     * Отрисовка сетевых линий связи
+     * [ЧТО] Рисует линии между соединёнными постройками и пользователями
+     * [ЗАЧЕМ] 4.3 - Визуализация сетевых соединений
+     * [PLAN] 4.3.2 - Добавить пульсацию и анимацию передачи данных
+     */
+    drawNetworkLines() {
+        if (!this.networkManager) return;
+        
+        // [ЧТО] Получаем все рёбра сети (соединения между постройками)
+        // [ЗАЧЕМ] 4.3.1 - Отрисовка соединительных линий
+        const edges = this.networkManager.getNetworkEdges();
+        
+        // [ЧТО] Проходим по всем соединениям и рисуем линии
+        // [ЗАЧЕМ] Визуализация топологии сети
+        edges.forEach(edge => {
+            const hex1 = this.hexGrid.getHexById(edge.from);
+            const hex2 = this.hexGrid.getHexById(edge.to);
+            
+            if (!hex1 || !hex2) return;
+            
+            // [ЧТО] Определяем цвет линии на основе статуса соединения
+            // [ЗАЧЕМ] 4.3.1 - Цвет линии соответствует статусу
+            const lineColor = edge.isActive ? '#00ff00' : '#ff4444';
+            const lineWidth = 2;
+            
+            // [ЧТО] Рисуем линию от центра к центру
+            // [ЗАЧЕМ] 4.3.1 - Линии проводятся строго от центра гекса к центру
+            this.ctx.beginPath();
+            this.ctx.moveTo(hex1.x, hex1.y);
+            this.ctx.lineTo(hex2.x, hex2.y);
+            
+            // [ЧТО] Настраиваем стиль линии
+            // [ЗАЧЕМ] Светящиеся линии для красоты
+            this.ctx.strokeStyle = lineColor;
+            this.ctx.lineWidth = lineWidth;
+            this.ctx.shadowColor = lineColor;
+            this.ctx.shadowBlur = 10;
+            this.ctx.stroke();
+            
+            // [ЧТО] Сбрасываем тень после отрисовки
+            // [ЗАЧЕМ] Не влиять на последующую отрисовку
+            this.ctx.shadowBlur = 0;
+        });
+        
+        // [ЧТО] Логгируем количество отрисованных линий
+        // [ЗАЧЕМ] Отладка и статистика
+        if (edges.length > 0) {
+            console.log(`[GridRenderer.drawNetworkLines] Отрисовано ${edges.length} соединений`);
+        }
     }
     
     /**

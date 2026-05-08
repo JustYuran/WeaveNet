@@ -51,6 +51,15 @@ class Game {
         // [PLAN] Рефакторинг: сделать userManager параметром конструктора
         this.gridRenderer.userManager = this.userManager;
         
+        // [ЧТО] Создаём менеджер сети для управления соединениями
+        // [ЗАЧЕМ] 4.1-4.4 - Логика соединения, топология, маршрутизация
+        // [PLAN] Интеграция с resourceManager для расчёта дохода
+        this.networkManager = new NetworkManager(this.hexGrid, this.buildingsManager, this.userManager);
+        
+        // [ЧТО] Передаём networkManager в gridRenderer для отрисовки линий
+        // [ЗАЧЕМ] 4.3 - Визуализация сетевых соединений
+        this.gridRenderer.networkManager = this.networkManager;
+        
         // [ЧТО] Настраиваем обработчики событий камеры
         // [ЗАЧЕМ] Управление камерой (ЛКМ - панорамирование, колесо - зум)
         this.cameraManager.setupEventListeners();
@@ -564,6 +573,13 @@ class Game {
         // [PLAN] Добавить другие игровые системы
         if (this.userManager) {
             this.userManager.update();
+        }
+        
+        // [ЧТО] Перестраиваем сеть при изменениях
+        // [ЗАЧЕМ] 4.1-4.4 - Актуализация графа сети и соединений
+        // [PLAN] Оптимизировать: пересчитывать только при изменениях
+        if (this.networkManager) {
+            this.networkManager.rebuildNetwork();
         }
     }
     
