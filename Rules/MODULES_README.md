@@ -11,7 +11,10 @@ WeaveNet/src/modules/
 ├── gridRenderer.js  # 🟢 Рендеринг: Canvas отрисовка гексов, объектов, курсоров, эффектов
 ├── camera.js        # 🟢 Камера: панорамирование (ЛКМ), зум (колесо), ограничения
 ├── buildings.js     # 🟢 Типы построек: характеристики, стоимость, производство
-└── userManager.js   # 🟢 Пользователи: спавн, перемещение, лимиты (до 6 на гекс)
+├── userManager.js   # 🟢 Пользователи: спавн, перемещение, лимиты (до 6 на гекс), статусы
+├── buildingSystem.js# 🟢 Постройки: режимы работы, размещение, управление
+├── resourceManager.js # 🟢 Экономика: доход, расход энергии, баланс
+└── networkManager.js # 🟢 Сеть: граф связей, соединения, маршрутизация
 ```
 
 ---
@@ -34,6 +37,9 @@ class Game {
         this.gridRenderer        // Экземпляр GridRenderer (отрисовка)
         this.userManager         // Экземпляр UserManager (пользователи)
         this.buildingsManager    // Экземпляр Buildings (постройки)
+        this.buildingSystem      // Экземпляр BuildingSystem (логика построек)
+        this.resourceManager     // Экземпляр ResourceManager (экономика)
+        this.networkManager      // Экземпляр NetworkManager (сеть)
         this.resources           // Ресурсы игрока (info, energy)
         this.selectedBuildingType // Выбранный тип постройки
         this.animationId         // ID requestAnimationFrame
@@ -60,6 +66,9 @@ class Game {
 - Создаёт `GridRenderer(canvas, hexGrid, cameraManager)` — рендерер
 - Создаёт `UserManager(hexGrid)` — менеджер пользователей
 - Создаёт `Buildings()` — менеджер типов построек
+- Создаёт `BuildingSystem(hexGrid, buildings)` — логика построек
+- Создаёт `ResourceManager(game)` — экономика
+- Создаёт `NetworkManager(hexGrid, buildingSystem, userManager)` — сеть
 - Обрабатывает ввод пользователя и передаёт команды в другие модули
 
 ---
@@ -79,7 +88,9 @@ class Game {
     neighbors: [6],       // Ссылки на соседние гексы
     building: null,       // Постройка на гексе (если есть)
     x: number,            // Pixel-координата X (для отрисовки)
-    y: number             // Pixel-координата Y (для отрисовки)
+    y: number,            // Pixel-координата Y (для отрисовки)
+    terrain: string,      // Тип биома (plains, desert, snow)
+    obstacle: null|string // Тип преграды (mountain, chasm, water)
 }
 ```
 
@@ -98,6 +109,9 @@ class Game {
 | `getHexSize()` | Возврат размера гекса |
 | `getHexWidth()` | Возврат ширины гекса (`sqrt(3) * size`) |
 | `getHexHeight()` | Возврат высоты гекса (`2 * size`) |
+| `canBuildOnHex(hexId)` | Проверка возможности строительства (МОДУЛЬ 1 ✅) |
+| `canUserSpawnOnHex(hexId)` | Проверка возможности спавна пользователей (МОДУЛЬ 1 ✅) |
+| `isPathBlocked(fromHexId, toHexId)` | Проверка блокировки пути преградами (МОДУЛЬ 1 ✅) |
 
 #### Axial-координаты:
 
@@ -281,8 +295,8 @@ class UserManager {
 {
     id: number,           // Уникальный ID
     hexId: number,        // ID гекса где находится
+    status: string,       // Статус: 'white', 'yellow', 'green', 'red'
     createdAt: number,    // Время создания
-    color: string,        // Цвет для отрисовки
     moveCooldown: number  // Задержка перед следующим перемещением
 }
 ```
@@ -296,12 +310,133 @@ class UserManager {
 | `getAvailableHexes()` | Поиск гексов с местом (< 6 пользователей) |
 | `populateInitialUsers(count)` | Заполнение карты начальными пользователями |
 | `updateUsers()` | Обновление состояния (перемещение) |
-| `generateRandomColor()` | Генерация случайного цвета |
+| `updateUserStatuses()` | Смена статусов пользователей (МОДУЛЬ 2 ✅) |
+| `infectUsersOnHex(building)` | Заражение пользователей в радиусе постройки (МОДУЛЬ 2 ✅) |
+| `getStatusColor(status)` | Получение цвета статуса (МОДУЛЬ 2 ✅) |
 
 #### Лимиты:
 - **Максимум пользователей:** 1.5 × количество гексов
 - **На один гекс:** до 6 пользователей
 - **Обновление:** каждые 1 секунду (перемещение)
+
+#### Статусы пользователей (МОДУЛЬ 2 ✅):
+- ⚪ **Белый**: нейтральный, не приносит доход
+- 🟡 **Желтый**: зараженный, базовый доход, высокий риск поломки
+- 🟢 **Зеленый**: доброволец, высокий доход, низкий риск поломки
+- 🔴 **Красный**: заблокированный, нет дохода, связь обрывается
+
+---
+
+### 7. `buildingSystem.js` — Логика построек
+
+**[ЧТО]** Управление размещением, режимами работы и характеристиками построек  
+**[ЗАЧЕМ]** Реализация механик строительства и эксплуатации узлов
+
+#### Основные компоненты:
+
+```javascript
+class BuildingSystem {
+    constructor(hexGrid, buildingsManager) {
+        this.hexGrid             // Ссылка на HexGrid
+        this.buildingsManager    // Ссылка на Buildings
+        this.buildings           // Map: hexId → building object
+    }
+}
+```
+
+#### Ключевые методы:
+
+| Метод | Описание |
+|-------|----------|
+| `constructor(hexGrid, buildingsManager)` | Инициализация системы |
+| `canPlaceBuilding(hexId, typeId)` | Проверка возможности размещения |
+| `placeBuilding(hexId, typeId)` | Размещение постройки на гексе |
+| `removeBuilding(hexId)` | Удаление постройки с гекса |
+| `getBuilding(hexId)` | Получение постройки по ID гекса |
+| `getActiveBuildings()` | Получение всех активных построек |
+| `getCoverageRadius(building)` | Расчет радиуса покрытия с учётом режима (МОДУЛЬ 3 ✅) |
+| `setBuildingMode(hexId, mode)` | Переключение режима (Белый/Желтый/Зеленый) (МОДУЛЬ 3 ✅) |
+
+#### Режимы работы (МОДУЛЬ 3 ✅):
+- ⚪ **Белый**: не потребляет энергию, нет сигнала
+- 🟡 **Желтый**: 50% радиус, 50% потребление
+- 🟢 **Зеленый**: 100% радиус, 100% потребление
+
+---
+
+### 8. `resourceManager.js` — Экономика
+
+**[ЧТО]** Управление ресурсами игрока (Инфа, Энергия)  
+**[ЗАЧЕМ]** Балансировка экономики, расчёт дохода и расхода
+
+#### Основные компоненты:
+
+```javascript
+class ResourceManager {
+    constructor(game) {
+        this.game                // Ссылка на Game
+        this.info                // Информация (валюта)
+        this.energy              // Энергия (ресурс)
+        this.startingInfo        // Стартовая Инфа (1000)
+        this.startingEnergy      // Стартовая Энергия (10)
+    }
+}
+```
+
+#### Ключевые методы:
+
+| Метод | Описание |
+|-------|----------|
+| `constructor(game)` | Инициализация экономики |
+| `calculateIncome()` | Расчёт дохода Инфы от пользователей (МОДУЛЬ 3 ✅) |
+| `calculateEnergyConsumption()` | Расчёт расхода Энергии постройками (МОДУЛЬ 3 ✅) |
+| `addInfo(amount)` | Добавление Инфы |
+| `spendInfo(amount)` | Трата Инфы |
+| `addEnergy(amount)` | Добавление Энергии |
+| `updateResources()` | Обновление ресурсов каждый такт (МОДУЛЬ 3 ✅) |
+
+#### Формулы (МОДУЛЬ 3 ✅):
+- **Доход Инфы:** (Желтые × 0.5) + (Зеленые × 1.0) в секунду
+- **Расход Энергии:** Σ(потребление каждой активной постройки)
+- **Генерация Энергии:** +1/сек за 10 активных пользователей +5/сек за генератор
+
+---
+
+### 9. `networkManager.js` — Сеть и топология
+
+**[ЧТО]** Построение графа сети, соединения между узлами  
+**[ЗАЧЕМ]** Расчет покрытия, маршрутизация сигнала, подключение пользователей
+
+#### Основные компоненты:
+
+```javascript
+class NetworkManager {
+    constructor(hexGrid, buildingSystem, userManager) {
+        this.hexGrid             // Ссылка на HexGrid
+        this.buildingSystem      // Ссылка на BuildingSystem
+        this.userManager         // Ссылка на UserManager
+        this.networkGraph        // Граф сети (adjacency list)
+        this.connections         // Массив активных соединений
+    }
+}
+```
+
+#### Ключевые методы:
+
+| Метод | Описание |
+|-------|----------|
+| `constructor(hexGrid, buildingSystem, userManager)` | Инициализация сети |
+| `buildNetworkGraph()` | Построение графа соединений (МОДУЛЬ 4 ✅) |
+| `findConnectedComponents()` | Поиск связанных компонентов (МОДУЛЬ 4 ✅) |
+| `updateUserConnections()` | Обновление подключений пользователей (МОДУЛЬ 4 ✅) |
+| `getNetworkStats()` | Статистика сети (МОДУЛЬ 4 ✅) |
+| `isHexConnected(hexId)` | Проверка подключения гекса к сети |
+
+#### Логика соединений (МОДУЛЬ 4 ✅):
+- Постройки соединяются если в радиусе покрытия
+- Горы и пропасти блокируют сигнал
+- Пользователи подключаются если в радиусе активной постройки
+- Изолированные фрагменты помечаются как disconnected
 
 ---
 
