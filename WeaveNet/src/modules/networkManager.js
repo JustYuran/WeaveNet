@@ -276,6 +276,16 @@ class NetworkManager {
     }
     
     /**
+     * Получение всех соединений пользователей
+     * [ЧТО] Возвращает Map подключений пользователей к постройкам
+     * [ЗАЧЕМ] 4.3 - Для отрисовки линий подключения в gridRenderer
+     * @returns {Map} userConnections (userId -> buildingId)
+     */
+    getUserConnections() {
+        return this.userConnections;
+    }
+    
+    /**
      * Получение всех узлов сети
      * @returns {array} Массив узлов
      */

@@ -51,6 +51,10 @@ class Game {
         // [PLAN] Рефакторинг: сделать userManager параметром конструктора
         this.gridRenderer.userManager = this.userManager;
         
+        // [ЧТО] Передаём buildingSystem в gridRenderer для отрисовки линий
+        // [ЗАЧЕМ] 4.3 - Для определения цвета линий по режиму работы построек
+        this.gridRenderer.buildingSystem = this.buildingsManager;
+        
         // [ЧТО] Создаём менеджер сети для управления соединениями
         // [ЗАЧЕМ] 4.1-4.4 - Логика соединения, топология, маршрутизация
         // [PLAN] Интеграция с resourceManager для расчёта дохода
@@ -59,6 +63,10 @@ class Game {
         // [ЧТО] Передаём networkManager в gridRenderer для отрисовки линий
         // [ЗАЧЕМ] 4.3 - Визуализация сетевых соединений
         this.gridRenderer.networkManager = this.networkManager;
+        
+        // [ЧТО] Передаём cameraManager в gridRenderer для оптимизации отрисовки
+        // [ЗАЧЕМ] 4.3.3 - Скрытие линий при сильном отдалении камеры
+        this.gridRenderer.cameraManager = this.cameraManager;
         
         // [ЧТО] Настраиваем обработчики событий камеры
         // [ЗАЧЕМ] Управление камерой (ЛКМ - панорамирование, колесо - зум)
